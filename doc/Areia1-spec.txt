@@ -40,8 +40,8 @@ ooo1xxxx iiiiiiii iiiiiiii: OP1.w @x, #i
 11101ooo yyyyxxxx: OP2.w @x, #y
 11111ooo yyyyxxxx: OP2.w @x, @y
  
-11100111 oooobbbb aaaaaaaa aaaaaaaa: OP3 $baaaa
-11110111 ooooxxxx aaaaaaaa: OP3 $aa000, @x
+11100111 ooooxxxx aaaaaaaa: OP3 $aa000, @x
+11110111 oooobbbb aaaaaaaa aaaaaaaa: OP3 $baaaa
 11101111 001oxxxx aaaaaaaa aaaaaaaa: OP4.b @x, $Faaaa
 11111111 001oxxxx aaaaaaaa aaaaaaaa: OP4.w @x, $Faaaa
 11101111 010oxxxx yyyybbbb aaaaaaaa: OP4.b @x, $baa00, @y
@@ -101,7 +101,6 @@ CPU REGISTERS: $FFF80-$FFFFF
     start       type        description
 ---------------------------------------------------------
     $FFF80      byte[3]     Bits 0-19 point to the address of the interrupt vector. Bits 20-23 are reserved.
-    $FFF83      byte        Top 8 bits of stack pointer (Stack starts at $xxFFF and makes its way up up to $0FFFF more)
     $FFF84      byte[4]     32 bits, one for each interrupt line. Interrupt lines are configured from within devices. To clear an interrupt line, write the bit as set to the proper address. Interrupt lines 0-3 are reserved by the CPU.
 
 (The CPU will also include the timer in a future revision)

@@ -257,9 +257,6 @@ tok_reg_inrange(R = {ok, X, _}) when X >= 0 andalso X =< 15 -> R.
 tok_reg([$@|T]) -> tok_reg_inrange(tok_num(T));
 tok_reg(_) -> error.
 
-tok_imm([$#|T]) -> tok_num(T);
-tok_imm(_) -> error.
-
 parse_end([]) -> ok;
 parse_end([$; | _]) -> ok.
 
@@ -414,12 +411,12 @@ parse_op3(Code, L, State) ->
 			{Sx1, Lx3};
 		_ ->
 			Sx1 = case Imm of
-				_ when is_integer(Imm) andalso (Imm band 16#FFF) -> mem_write(State, [
+				_ when is_integer(Imm) andalso (Imm band 16#FFF) == 0 -> mem_write(State, [
 					2#11100111,
 					Code*16 + 0,
 					{calc, {unop, o_top8, Imm}}]);
 				_ -> mem_write(State, [
-					2#11100111,
+					2#11110111,
 					{calc, {binop, o_add, Code*16, {unop, o_top4, Imm}}},
 					{calc, {unop, o_low, Imm}},
 					{calc, {unop, o_high, Imm}}])
@@ -567,3 +564,4 @@ main([FName, OutFName]) ->
 	file:write_file(OutFName, list_to_binary(Data)).
 
 main() -> main([]).
+
