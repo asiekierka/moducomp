@@ -9,6 +9,7 @@ import net.minecraft.block.BlockContainer;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.renderer.texture.IconRegister;
 import net.minecraft.creativetab.CreativeTabs;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.Icon;
 import net.minecraft.world.World;
@@ -36,6 +37,14 @@ public class BlockTapeReader extends BlockContainer {
     public boolean isOpaqueCube() { return false; }
     public boolean renderAsNormalBlock() { return false; }
     
+    @Override
+	public boolean onBlockActivated(World world, int x, int y, int z, EntityPlayer player, int par6, float par7, float par8, float par9) {
+		if(!world.isRemote || player.isSneaking()) {
+			player.openGui(ModularComputing.instance, 0, world, x, y, z);
+		}
+		return true;
+	}
+	
     @Override
     @SideOnly(Side.CLIENT)
     public Icon getIcon (int side, int metadata)

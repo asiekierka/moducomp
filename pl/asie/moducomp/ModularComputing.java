@@ -36,13 +36,20 @@ public class ModularComputing {
     	
     	blockTapeReader = new BlockTapeReader(1920, Material.circuits);
     	itemPaperTape = new ItemPaperTape(19200);
+
     	GameRegistry.registerBlock(blockTapeReader, "moducomp.tape_reader");
+    	
+    	GameRegistry.registerTileEntity(TileEntityTapeReader.class, "moducomp.tape_reader");
+    	
     	GameRegistry.registerItem(itemPaperTape, "moducomp.paper_tape");
     }
 	
 	@EventHandler
 	public void init(FMLInitializationEvent event) {
     	proxy.addNames();
+    	
+    	NetworkRegistry.instance().registerGuiHandler(this, new GuiHandler());
+    	
     	GameRegistry.addShapedRecipe(new ItemStack(itemPaperTape), " x ", "x x", " x ", 'x', Item.paper);
 	}
 	

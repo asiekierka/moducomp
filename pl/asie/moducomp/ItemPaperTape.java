@@ -1,7 +1,6 @@
 package pl.asie.moducomp;
 
 import pl.asie.moducomp.api.ITape;
-import pl.asie.moducomp.api.TapeDirection;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
@@ -24,25 +23,47 @@ public class ItemPaperTape extends Item implements ITape {
 		return true;
 	}
 	
-	public int seek(ItemStack stack, int bytes, TapeDirection DIRECTION) {
-		if(DIRECTION == TapeDirection.BACKWARD) bytes = 0 - bytes; // invert
+	public int seek(ItemStack stack, int bytes) {
 		if(check(stack)) {
 			NBTTagCompound compound = stack.getTagCompound();
 			int currentPosition = compound.getInteger("TapePosition");
 			int targetPosition = currentPosition + bytes;
 			if(targetPosition < 0) targetPosition = 0;
-			else if(targetPosition >= getLength(stack)) targetPosition = getLength(stack);
+			else if(targetPosition >= getLength(stack)) targetPosition = getLength(stack) - 1;
 			compound.setInteger("TapePosition", targetPosition);
 			stack.setTagCompound(compound);
 			return Math.abs(currentPosition - targetPosition);
 		} else return 0;
 	}
-	
-	public byte getByte(ItemStack stack) {
+
+	protected void setByte(ItemStack stack, int offset, byte val) {
 		if(check(stack)) {
 			NBTTagCompound compound = stack.getTagCompound();
-			return compound.getByteArray("TapeData")[compound.getInteger("TapePosition") & getLength(stack)];
+			byte[] data = compound.getByteArray("TapeData");
+			int pos = (compound.getInteger("TapePosition") + offset);
+			if(pos < 0 || pos >= getLength(stack)) return;
+			data[pos] = val;
+			compound.setByteArray("TapeData", data);
+			stack.setTagCompound(compound);
+		}
+	}
+	
+	public byte getByte(ItemStack stack, int offset) {
+		if(check(stack)) {
+			NBTTagCompound compound = stack.getTagCompound();
+			int pos = (compound.getInteger("TapePosition") + offset);
+			if(pos < 0 || pos >= getLength(stack)) return (byte)0;
+			return compound.getByteArray("TapeData")[pos];
 		} else return (byte)0;
+	}
+	
+	public boolean isValid(ItemStack stack, int offset) {
+		if(check(stack)) {
+			NBTTagCompound compound = stack.getTagCompound();
+			int target = (compound.getInteger("TapePosition") + offset);
+			int length = getLength(stack);
+			return (target >= 0 && target < length);
+		} else return false;
 	}
 	public int getLength(ItemStack stack) {
 		if(stack.itemID != this.itemID) return 0;
