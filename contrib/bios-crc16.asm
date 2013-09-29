@@ -2,7 +2,7 @@
 
 	.org $FE000
 crc_base:
-	.dw $E77D
+	.dw $550F
 code_start:
 	; Clear interrupts, set up stack.
 	cli
@@ -43,6 +43,8 @@ start:
 	; @3 = in-byte counter
 	; @4 = a byte we are reading
 
+	move.w @1, #str_crc_testing
+	jsr putsF
 	move.w @1, #$FFFF
 	move.w @2, #code_start
 	crc_lp1:
@@ -73,13 +75,47 @@ start:
 	
 	; check CRC
 	ld.w @2, $FE000 ; labels don't work in ld/st in the assembler yet - FIX THIS
+	move.w @13, @1
+	move.w @14, @2
 	xor.w @1, @2
+	jz crc_pass
+		move.w @1, #str_fail
+		jsr putsF
+		cli
+		jmp idle
+crc_pass:
+	move.w @1, #str_ok
+	jsr putsF
+
+	cli
+	jmp idle
 	
 idle:
-	cli
 	hlt
-	; This code should halt and never get an interrupt.
+	jmp idle
+
+	; INPUT:
+	;   @1 = input string in $Fxxxx bank
+	; CLOBBERS: @1, @2
+putsF:
+	move.w @2, @1
+putsF_lp1:
+	ld.b @1, $F0000, @2
+	and.b @1, @1
+	jz putsF_ret
+		add.w @2, #1
+		st.b $FDFFE, @1
+		jmp putsF_lp1
+putsF_ret:
+	ret
+	
 code_end:
+
+str_error: .db "ERROR: ", 0
+str_err_ram0: .db "RAM required in slot 0", 0
+str_crc_testing: .db "Testing CRC16...", 0
+str_ok: .db "OK\n", 0
+str_fail: .db "FAIL\n", 0
 
 	.org $FFF80
 	.dw $0000 ; version identifier

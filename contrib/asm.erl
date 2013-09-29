@@ -204,10 +204,10 @@ skip_ws(L) -> L.
 
 tok_str([$"|T], Acc) -> {ok, lists:reverse(Acc), T};
 tok_str([$\\, $\\ | T], Acc) -> tok_str(T, [$\\ | Acc]);
-tok_str([$\\, $n | T], Acc) -> tok_str(T, [$n | Acc]);
-tok_str([$\\, $r | T], Acc) -> tok_str(T, [$r | Acc]);
-tok_str([$\\, $t | T], Acc) -> tok_str(T, [$t | Acc]);
-tok_str([$\\, $b | T], Acc) -> tok_str(T, [$b | Acc]);
+tok_str([$\\, $n | T], Acc) -> tok_str(T, [$\n | Acc]);
+tok_str([$\\, $r | T], Acc) -> tok_str(T, [$\r | Acc]);
+tok_str([$\\, $t | T], Acc) -> tok_str(T, [$\t | Acc]);
+tok_str([$\\, $b | T], Acc) -> tok_str(T, [$\b | Acc]);
 tok_str([$\\, $" | T], Acc) -> tok_str(T, [$" | Acc]);
 tok_str([$\\, $x, D0, D1 | T], Acc) ->
 	{ok, N, L2} = tok_int_hex([D0, D1], 0),

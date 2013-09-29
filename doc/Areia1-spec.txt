@@ -54,7 +54,7 @@ FLAGS:
 ---------------------------------------
     0       ZERO (CMP equality)
     1       CARRY (whether carrying a bit, for subtract follow Z80 impl.)
-    2       OVERFLOW (whether operation has overflowed)
+    2       OVERFLOW (add/sub/cmp: if signed overflow occurs; xor/and/or: sum of all bits over GF(2) (parity))
     3       SIGNED (whether >= 0x8000 or >= 0x80 for b)
     4       INTERRUPT (set to 1 to enable)
     5-15    Reserved.
