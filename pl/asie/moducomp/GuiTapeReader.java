@@ -2,6 +2,8 @@ package pl.asie.moducomp;
 
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.util.logging.Level;
 
 import org.lwjgl.opengl.GL11;
@@ -11,7 +13,9 @@ import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.item.ItemStack;
+import net.minecraft.network.packet.Packet250CustomPayload;
 import net.minecraft.util.ResourceLocation;
+import cpw.mods.fml.common.network.PacketDispatcher;
 import cpw.mods.fml.relauncher.SideOnly;
 import cpw.mods.fml.relauncher.Side;
 
@@ -34,8 +38,6 @@ public class GuiTapeReader extends GuiContainer
      */
     protected void drawGuiContainerForegroundLayer(int par1, int par2)
     {
-        //this.fontRenderer.drawString(this.lowerChestInventory.isInvNameLocalized() ? this.lowerChestInventory.getInvName() : I18n.getString(this.lowerChestInventory.getInvName()), 8, 6, 4210752);
-        //this.fontRenderer.drawString(this.upperChestInventory.isInvNameLocalized() ? this.upperChestInventory.getInvName() : I18n.getString(this.upperChestInventory.getInvName()), 8, this.ySize - 96 + 2, 4210752);
     }
     
     private static final int TAPE_HOLES_Y = 172;
@@ -82,6 +84,28 @@ public class GuiTapeReader extends GuiContainer
         }
     }
    
+    private Packet250CustomPayload sendPositionPacket() {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream(32);
+        DataOutputStream os = new DataOutputStream(bos);
+        try {
+        	NetworkHandler.prefixTileEntity(this.tapeReaderEntity, os);
+            os.writeByte(2);
+            os.writeInt(this.tapeReaderEntity.getPosition());
+        } catch(Exception e) { e.printStackTrace(); }
+        return new Packet250CustomPayload("ModularC", bos.toByteArray());
+    }
+    
+    private Packet250CustomPayload sendBitSetPacket(byte offset, byte shift) {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream(32);
+        DataOutputStream os = new DataOutputStream(bos);
+        try {
+        	NetworkHandler.prefixTileEntity(this.tapeReaderEntity, os);
+            os.writeByte(1);
+            os.writeInt(this.tapeReaderEntity.getPosition());
+            os.writeByte(offset); os.writeByte(shift);
+        } catch(Exception e) { e.printStackTrace(); }
+        return new Packet250CustomPayload("ModularC",bos.toByteArray());
+    }
     @Override
     protected void mouseClicked(int x, int y, int button) {
     	super.mouseClicked(x, y, button);
@@ -101,17 +125,16 @@ public class GuiTapeReader extends GuiContainer
             		if(y >= ypos && y < ypos+9) { offset = i; break; }
             	}
             	if(offset >= -3) { // Y found
-                    ItemStack tape = tapeReaderEntity.getStackInSlot(0);
-                    if(tape != null && tape.getItem() instanceof ItemPaperTape) {
-                    	ItemPaperTape tapeHandler = (ItemPaperTape)tape.getItem();
-                    	byte out = tapeHandler.getByte(tape, offset);
-                    	out |= (1<<bit);
-                    	tapeHandler.setByte(tape, offset, out);
-                    }
+            		PacketDispatcher.sendPacketToServer(sendBitSetPacket((byte)offset, (byte)bit));
             	}
             }
         }
     }
+    
+    public void onGuiClosed() {
+    	PacketDispatcher.sendPacketToServer(sendPositionPacket());
+    }
+    
     /**
      * Draw the background layer for the GuiContainer (everything behind the items)
      */

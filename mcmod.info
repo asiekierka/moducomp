@@ -1,5 +1,5 @@
 [ {
-"modid": "ModularComputing",
+"modid": "moducomp",
 "name": "Modular Computing", 
 "description": "Adds a modular computing ecosystem and a few neat things."
 "version": "0.0.1",

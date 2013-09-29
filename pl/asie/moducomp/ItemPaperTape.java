@@ -5,6 +5,7 @@ import java.util.List;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import pl.asie.moducomp.api.ITape;
+import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -17,6 +18,7 @@ public class ItemPaperTape extends Item implements ITape {
 		super(id);
 		this.setUnlocalizedName("moducomp.paper_tape");
 		this.setTextureName("moducomp:paper_tape");
+   		this.setCreativeTab(CreativeTabs.tabRedstone);
 	}
 	
 	private boolean check(ItemStack stack) {
@@ -41,6 +43,20 @@ public class ItemPaperTape extends Item implements ITape {
 			stack.setTagCompound(compound);
 			return Math.abs(currentPosition - targetPosition);
 		} else return 0;
+	}
+	
+	protected int getPosition(ItemStack stack) {
+		if(check(stack)) {
+			return stack.getTagCompound().getInteger("TapePosition");
+		} else return 0;
+	}
+	
+	protected void setPosition(ItemStack stack, int pos) {
+		if(check(stack)) {
+			NBTTagCompound compound = stack.getTagCompound();
+			compound.setInteger("TapePosition", pos);
+			stack.setTagCompound(compound);
+		}
 	}
 	
 	protected ItemStack extend(ItemStack stack, ItemStack oldStack, boolean copyData) {

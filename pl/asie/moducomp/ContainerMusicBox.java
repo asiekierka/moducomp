@@ -8,14 +8,14 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.item.ItemStack;
 
-public class ContainerTapeReader extends ContainerInventory {
-	protected TileEntityTapeReader tileEntity;
+public class ContainerMusicBox extends ContainerInventory {
+	protected TileEntityMusicBox tileEntity;
 
-	public ContainerTapeReader(InventoryPlayer inventoryPlayer, TileEntityTapeReader te) {
+	public ContainerMusicBox(InventoryPlayer inventoryPlayer, TileEntityMusicBox te) {
 		super(1);
 		tileEntity = te;
-		addSlotToContainer(new SlotTyped(ItemPaperTape.class, tileEntity, 0, 25, 55));
-		bindPlayerInventory(inventoryPlayer, 8, 85);
+		addSlotToContainer(new SlotTyped(ItemPaperTape.class, tileEntity, 0, 80, 20));
+		bindPlayerInventory(inventoryPlayer, 8, 52);
 	}
 	
 	@Override
