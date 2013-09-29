@@ -63,7 +63,7 @@ public class BlockMusicBox extends BlockContainer {
 		return new TileEntityMusicBox();
 	}
 	
-	public int getMusicSpeed() { return 3; }
+	public int getMusicSpeed() { return 5; }
 	
 	// Here comes the musicbox logic.
 	@Override
