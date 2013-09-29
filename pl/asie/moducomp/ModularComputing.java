@@ -52,7 +52,9 @@ public class ModularComputing {
     	NetworkRegistry.instance().registerGuiHandler(this, new GuiHandler());
     	
     	GameRegistry.addShapedRecipe(new ItemStack(itemPaperTape), " x ", "x x", " x ", 'x', Item.paper);
-    	GameRegistry.addShapedRecipe(new ItemStack(itemPaperTape), " x ", "xyx", " x ", 'x', Item.paper, 'y', itemPaperTape);
+    	for(int i = 0; i < 2048; i++) { // TERIRBLE, TERRIBLE HACK! Adds 2048 recipes
+    		GameRegistry.addShapedRecipe(new ItemStack(itemPaperTape), " x ", "xyx", " x ", 'x', Item.paper, 'y', new ItemStack(itemPaperTape, 1, i));
+    	}
 	}
 	
 	@EventHandler

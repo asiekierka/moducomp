@@ -1,6 +1,11 @@
 package pl.asie.moducomp;
 
+import java.util.List;
+
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 import pl.asie.moducomp.api.ITape;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
@@ -38,12 +43,12 @@ public class ItemPaperTape extends Item implements ITape {
 		} else return 0;
 	}
 	
-	protected ItemStack extend(ItemStack stack) {
-		if(check(stack) && stack.getItemDamage() < MAX_TAPE_LENGTH) {
-			stack.setItemDamage(stack.getItemDamage()+1);
+	protected ItemStack extend(ItemStack stack, ItemStack oldStack) {
+		if(check(stack) && check(oldStack) && oldStack.getItemDamage() < MAX_TAPE_LENGTH) {
+			stack.setItemDamage(oldStack.getItemDamage()+1);
 			NBTTagCompound compound = stack.getTagCompound();
 			byte[] newData = new byte[getLength(stack)];
-			byte[] oldData = compound.getByteArray("TapeData");
+			byte[] oldData = oldStack.getTagCompound().getByteArray("TapeData");
 			System.arraycopy(oldData, 0, newData, 0, oldData.length);
 			compound.setByteArray("TapeData", newData);
 			stack.setTagCompound(compound);
@@ -99,4 +104,11 @@ public class ItemPaperTape extends Item implements ITape {
 	public float getSpeed() {
 		return 0.5F;
 	}
+	
+    @Override
+    @SideOnly(Side.CLIENT)
+    public void addInformation(ItemStack stack, EntityPlayer player, List list, boolean par4)
+    {
+        list.add(getLength(stack) + " bytes");
+    }
 }

@@ -1,5 +1,7 @@
 package pl.asie.moducomp;
 
+import java.util.logging.Level;
+
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
@@ -24,9 +26,10 @@ public class CraftingHandler implements ICraftingHandler {
         		int targetID = (slot != null ? slot.itemID : 0);
         		if(itemID != targetID) { isPaperTape = false; break; }
         	}
-        	if(isPaperTape && item.getItem() instanceof ItemPaperTape) { // Extend paper tape's length.
+        	if(isPaperTape && craftMatrix.getStackInSlot(4).getItem() instanceof ItemPaperTape && item.getItem() instanceof ItemPaperTape) {
+        		// Extend paper tape's length.
         		ItemPaperTape tapeHandler = (ItemPaperTape)item.getItem();
-        		item = tapeHandler.extend(item);
+        		item = tapeHandler.extend(item, craftMatrix.getStackInSlot(4));
         		return;
         	}
         }
