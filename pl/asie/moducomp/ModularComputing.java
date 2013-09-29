@@ -48,9 +48,11 @@ public class ModularComputing {
 	public void init(FMLInitializationEvent event) {
     	proxy.addNames();
     	
+    	GameRegistry.registerCraftingHandler(new CraftingHandler());
     	NetworkRegistry.instance().registerGuiHandler(this, new GuiHandler());
     	
     	GameRegistry.addShapedRecipe(new ItemStack(itemPaperTape), " x ", "x x", " x ", 'x', Item.paper);
+    	GameRegistry.addShapedRecipe(new ItemStack(itemPaperTape), " x ", "xyx", " x ", 'x', Item.paper, 'y', itemPaperTape);
 	}
 	
 	@EventHandler

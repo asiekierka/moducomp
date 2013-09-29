@@ -6,6 +6,8 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 
 public class ItemPaperTape extends Item implements ITape {
+	public static final int MAX_TAPE_LENGTH = (65536/32);
+	
 	public ItemPaperTape(int id) {
 		super(id);
 		this.setUnlocalizedName("moducomp.paper_tape");
@@ -34,6 +36,19 @@ public class ItemPaperTape extends Item implements ITape {
 			stack.setTagCompound(compound);
 			return Math.abs(currentPosition - targetPosition);
 		} else return 0;
+	}
+	
+	protected ItemStack extend(ItemStack stack) {
+		if(check(stack) && stack.getItemDamage() < MAX_TAPE_LENGTH) {
+			stack.setItemDamage(stack.getItemDamage()+1);
+			NBTTagCompound compound = stack.getTagCompound();
+			byte[] newData = new byte[getLength(stack)];
+			byte[] oldData = compound.getByteArray("TapeData");
+			System.arraycopy(oldData, 0, newData, 0, oldData.length);
+			compound.setByteArray("TapeData", newData);
+			stack.setTagCompound(compound);
+			return stack;
+		} else return null;
 	}
 
 	protected void setByte(ItemStack stack, int offset, byte val) {
@@ -74,6 +89,7 @@ public class ItemPaperTape extends Item implements ITape {
 		compound.setInteger("TapePosition", 0);
 		return compound;
 	}
+	
 	public void reset(ItemStack stack) {
 		if(check(stack)) {
 			stack.setTagCompound(reset(stack.getTagCompound()));
