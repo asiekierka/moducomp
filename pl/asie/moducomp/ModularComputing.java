@@ -5,6 +5,7 @@ import java.util.logging.Logger;
 import net.minecraft.block.material.Material;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraftforge.common.Configuration;
 import cpw.mods.fml.common.*;
 import cpw.mods.fml.common.Mod.*;
 import cpw.mods.fml.common.event.*;
@@ -35,9 +36,12 @@ public class ModularComputing {
     	logger = Logger.getLogger("moducomp");
     	logger.setParent(FMLLog.getLogger());
     	
-    	blockTapeReader = new BlockTapeReader(1920, Material.circuits);
-    	blockMusicBox = new BlockMusicBox(1921, Material.circuits);
-    	itemPaperTape = new ItemPaperTape(19200);
+    	Configuration config = new Configuration(event.getSuggestedConfigurationFile());
+    	config.load();
+    	
+    	blockTapeReader = new BlockTapeReader(config.getBlock("moducomp.tape_reader", 1920).getInt(), Material.circuits);
+    	blockMusicBox = new BlockMusicBox(config.getBlock("moducomp.music_box", 1921).getInt(), Material.circuits);
+    	itemPaperTape = new ItemPaperTape(config.getItem("moducomp.paper_tape", 19200).getInt());
 
     	GameRegistry.registerBlock(blockTapeReader, "moducomp.tape_reader");
     	GameRegistry.registerBlock(blockMusicBox, "moducomp.music_box");
@@ -46,7 +50,8 @@ public class ModularComputing {
     	GameRegistry.registerTileEntity(TileEntityMusicBox.class, "moducomp.music_box");
     	
     	GameRegistry.registerItem(itemPaperTape, "moducomp.paper_tape");
-    	
+
+    	config.save();
     	proxy.setupEvents();
     }
 	
