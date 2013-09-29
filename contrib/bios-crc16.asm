@@ -1,17 +1,16 @@
 ; Code by GreaseMonkey
 
 	.org $FE000
-	.dw $A55E ; Very Mature Default Checksum
+crc_base:
+	.dw $E77D
 code_start:
 	; Clear interrupts, set up stack.
 	cli
 	move.w @15, #$0100 ; Assume 256 bytes minimum
-	move.b @1, #$00
-	st.b $FFF83, @1
 
 	; Set up our interrupt vector.
 	move.w @1, #int_vec
-	st.b $FFF80, @1
+	st.w $FFF80, @1
 	move.b @1, #$0F
 	st.b $FFF82, @1
 
@@ -72,12 +71,17 @@ start:
 		cmp.w @2, #code_end
 		jnz crc_lp1
 	
+	; check CRC
+	ld.w @2, $FE000 ; labels don't work in ld/st in the assembler yet - FIX THIS
+	xor.w @1, @2
+	
 idle:
 	cli
 	hlt
 	; This code should halt and never get an interrupt.
-	.org $FFF80
 code_end:
+
+	.org $FFF80
 	.dw $0000 ; version identifier
 	.db "Areia-1 BIOS ROM", $00
 
