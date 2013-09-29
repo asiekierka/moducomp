@@ -43,15 +43,17 @@ public class ItemPaperTape extends Item implements ITape {
 		} else return 0;
 	}
 	
-	protected ItemStack extend(ItemStack stack, ItemStack oldStack) {
+	protected ItemStack extend(ItemStack stack, ItemStack oldStack, boolean copyData) {
 		if(check(stack) && check(oldStack) && oldStack.getItemDamage() < MAX_TAPE_LENGTH) {
 			stack.setItemDamage(oldStack.getItemDamage()+1);
-			NBTTagCompound compound = stack.getTagCompound();
-			byte[] newData = new byte[getLength(stack)];
-			byte[] oldData = oldStack.getTagCompound().getByteArray("TapeData");
-			System.arraycopy(oldData, 0, newData, 0, oldData.length);
-			compound.setByteArray("TapeData", newData);
-			stack.setTagCompound(compound);
+			if(copyData) {
+				NBTTagCompound compound = stack.getTagCompound();
+				byte[] newData = new byte[getLength(stack)];
+				byte[] oldData = oldStack.getTagCompound().getByteArray("TapeData");
+				System.arraycopy(oldData, 0, newData, 0, oldData.length);
+				compound.setByteArray("TapeData", newData);
+				stack.setTagCompound(compound);
+			}
 			return stack;
 		} else return null;
 	}
