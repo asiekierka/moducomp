@@ -1,0 +1,107 @@
+AREIA-1
+------------
+
+16 registers, 16 bits each,
+        0 = always 0
+        15 = SP
+
+Memory is treated as little-endian.
+ 
+OP1 in {move, cmp, add, sub, xor, or, and}
+        OP1.# @x, @y
+        OP1.# @x, #i
+ 
+OP2 in {asl, asr, lsr, rol, ror, rcl, rcr}
+        OP2.# @x, @y
+        OP2.# @x, #i
+ 
+OP3 in {jz, jnz, jc, jnc, jv, jnv, js, jns, jmp, jsr}
+        OP3 $baaaa
+        OP3 $aa000, @x 
+
+OP4 in {ld, st}
+        OP4.# @x, $Faaaa
+        OP4.# @x, $aaa00, @y
+        OP4.# @x, $baaaa, @y
+
+SPECIAL OPCODES (xxxx0000):
+00000000: NOP
+00100000: RET
+01000000: POPF
+01100000: PUSHF
+10000000: CLI
+10100000: SEI
+11000000: HLT
+
+ooo0xxxx iiiiiiii: OP1.b @x, #i
+ooo1xxxx iiiiiiii iiiiiiii: OP1.w @x, #i
+11100ooo yyyyxxxx: OP1.b @x, @y
+11110ooo yyyyxxxx: OP1.w @x, @y
+11101ooo yyyyxxxx: OP2.w @x, #y
+11111ooo yyyyxxxx: OP2.w @x, @y
+ 
+11100111 oooobbbb aaaaaaaa aaaaaaaa: OP3 $baaaa
+11110111 ooooxxxx aaaaaaaa: OP3 $aa000, @x
+11101111 001oxxxx aaaaaaaa aaaaaaaa: OP4.b @x, $Faaaa
+11111111 001oxxxx aaaaaaaa aaaaaaaa: OP4.w @x, $Faaaa
+11101111 010oxxxx yyyybbbb aaaaaaaa: OP4.b @x, $baa00, @y
+11111111 010oxxxx yyyybbbb aaaaaaaa: OP4.w @x, $baa00, @y
+11101111 011oxxxx yyyybbbb aaaaaaaa aaaaaaaa: OP4.b @x, $baaaa, @y
+11111111 011oxxxx yyyybbbb aaaaaaaa aaaaaaaa: OP4.w @x, $baaaa, @y
+
+FLAGS:
+    bit     description
+---------------------------------------
+    0       ZERO (CMP equality)
+    1       CARRY (whether carrying a bit, for subtract follow Z80 impl.)
+    2       OVERFLOW (whether operation has overflowed)
+    3       SIGNED (whether >= 0x8000 or >= 0x80 for b)
+    4       INTERRUPT (set to 1 to enable)
+    5-15    Reserved.
+
+MEMORY MAP:
+
+    start       end         description
+---------------------------------------------------------
+    $00000      $EFFFF      Main memory area (RAM)
+    $F0000      $FBFFF      Mirror of $00000 - $0BFFF
+    $FC000      $FCFFF      Reserved for future updates
+    $FD000      $FDFFF      I/O area (described below)
+    $FE000      $FFF7F      ROM
+    $FFF80      $FFFFF      CPU registers (described below)
+
+I/O AREA (16 x 256 bytes): $FDxyy (x - device ID (0-F), y - as below:)
+
+    start       end         type        description
+---------------------------------------------------------
+    $00         $01         short       Vendor ID ($0000-$7fff assigned by me, $8000-$feff usable by anyone, $ffff indicates nothing is connected)
+    $02         $02         byte        Device ID (dependent on vendor ID)
+    $03         $03         byte        Device class ($00-$7f assigned by me, $80-$fe usable by anyone, $ff - check via vendor/device ID)
+    $04         $FF         ...         Dependent on device class, device registers/data
+
+Device indexes 0 to 14 are devices connected to the bus. Device index 15 is the mainboard:
+
+    start       end         type        description
+---------------------------------------------------------
+    $04         $07         byte[4]     A 32-bit bit array defining what functionality is supported by this mainboard.
+                                        Bit 0 - MMU     Bit 1 - DMA
+    $08         $08         byte        [MMU] Top 8 bits of the bank.
+    $09         $09         byte        [MMU] Write to set the bank to real memory area X, read to get the current area of the bank.
+
+MMU MEMORY AREAS:
+0-239 - real memory ($00000-$EFFFF)
+240-241 - ROM
+242 - I/O
+243-255 - RESERVED
+
+$FFF80-$FFFFF is hardwired and cannot be moved with the MMU.
+
+CPU REGISTERS: $FFF80-$FFFFF
+
+    start       type        description
+---------------------------------------------------------
+    $FFF80      byte[3]     Bits 0-19 point to the address of the interrupt vector. Bits 20-23 are reserved.
+    $FFF83      byte        Top 8 bits of stack pointer (Stack starts at $xxFFF and makes its way up up to $0FFFF more)
+    $FFF84      byte[4]     32 bits, one for each interrupt line. Interrupt lines are configured from within devices. To clear an interrupt line, write the bit as set to the proper address. Interrupt lines 0-3 are reserved by the CPU.
+
+(The CPU will also include the timer in a future revision)
