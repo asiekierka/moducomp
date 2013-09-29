@@ -126,7 +126,7 @@ class StandardMemoryController(Memory):
 		return self.route(addr, lambda slot, addr: slot.read8(addr) if slot != None else (0, 0xFF))
 
 	def write8(self, addr, val):
-		return self.route(addr, lambda slot, addr, val: slot.write8(addr, val) if slot != None else 0)
+		return self.route(addr, lambda slot, addr, val: slot.write8(addr, val) if slot != None else 0, val)
 
 class CPU:
 	def __init__(self, memctl):
@@ -147,6 +147,26 @@ class CPU:
 		self.cfg[addr & 0x7F] = val
 		return 0
 	
+	def write8(self, addr, val):
+		assert (val&~0xFF) == 0
+
+		if addr < 0xFFF80:
+			cyc = self.memctl.write8(addr, val)
+		else:
+			cyc = self.writecfg(addr & 0x7F, val)
+
+		self.cycles += cyc+1
+
+	def write16(self, addr, val):
+		v0 = self.write8(addr, (val & 0xFF))
+		v1 = self.write8(addr+1, (val >> 8) & 0xFF)
+
+	def read16(self, addr):
+		v0 = self.read8(addr)
+		v1 = self.read8(addr+1)
+		val = v0 | (v1<<8)
+		return val
+
 	def read8(self, addr):
 		if self.needs_full_reset or addr < 0xFFF80:
 			cyc, val = self.memctl.read8(addr)
@@ -379,7 +399,8 @@ class CPU:
 
 				if op & 0x08:
 					# OP4
-					size = (op2 & 1) != 0
+					is_store = (op2 & 1) != 0
+					size = (op & 0x10)
 					op2 >>= 1
 					if op2 == 1:
 						# $Faaaa
@@ -401,12 +422,12 @@ class CPU:
 					else:
 						assert False
 
-					if op & 0x10:
+					if is_store:
 						# ST
 						if size:
 							self.write16(imm, self.regs[reg_x])
 						else:
-							self.write8(imm, self.regs[reg_x])
+							self.write8(imm, self.regs[reg_x] & 0xFF)
 					else:
 						# LD
 						if size:
@@ -497,4 +518,6 @@ memctl.set_slot(0, RAM(4<<10))
 cpu = CPU(memctl)
 cpu.cold_reset()
 cpu.run_until_halt()
+print "HALT: %05X: " % (cpu.pc-1)
+print " ".join("%04X" % v for v in cpu.regs)
 
