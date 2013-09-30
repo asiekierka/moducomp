@@ -93,49 +93,17 @@ public class BlockMusicBox extends BlockContainer {
         }
     }
 	
-	private static final String[] noteMapping = {"abOne", "bbOne", "cOne", "dbOne", "ebOne", "fOne", "gOne", "abTwo", "none", "bbTwo", "cTwo", "dbTwo", "ebTwo", "fTwo", "gTwo", "abThree"};
-
 	@Override
     public void breakBlock(World world, int x, int y, int z, int id, int meta) {
     	Helper.dropItems(world, x, y, z);
     }
-	
-	protected static void addSounds(SoundManager manager) {
-		for(String note: noteMapping) {
-			if(note.equals("none")) continue;
-			manager.addSound("moducomp:musicbox_"+note+".ogg");
-		}
-		ModularComputing.logger.info("Initialized MusicBox sounds.");
-	}
-	
+
     @Override
     public void updateTick(World world, int x, int y, int z, Random random)
     {
-        if (!world.isRemote)
-        {
-        	// Get the tape and the relevant handler.
+        if (!world.isRemote) {
             TileEntityMusicBox temb = (TileEntityMusicBox)world.getBlockTileEntity(x, y, z);
-            ItemStack stack = temb.getStackInSlot(0);
-            if(stack != null && stack.getItem() instanceof ItemPaperTape) {
-            	ItemPaperTape tapeHandler = (ItemPaperTape)stack.getItem();
-            	ModularComputing.debug("Tick, position "+ tapeHandler.getPosition(stack));
-            	int seek = tapeHandler.seek(stack, 2);
-            	if(seek < 2) return; // End of tape
-            	int b1 = 0xFF & tapeHandler.getByte(stack, -2);
-            	int b2 = 0xFF & tapeHandler.getByte(stack, -1);
-            	int values = (b1 << 8) | b2;
-            	for(int i = 0; i < 16; i++) {
-            		boolean is = (values & (1<<(15-i))) > 0;
-            		if(!is) continue;
-            		String note = noteMapping[i];
-            		if(note.equals("none")) continue;
-            		ModularComputing.debug("Triggering note "+note);
-            		world.playSoundEffect(x, y, z, "moducomp:musicbox_"+note, 1.0F, 1.0F);
-            		//PacketDispatcher.sendPacketToAllAround(x, y, z, 16.0D, world.provider.dimensionId,
-            		//		new Packet62LevelSound("moducomp:musicbox_"+note, x, y, z, 1.0F, 1.0F));
-            	}
-            	world.scheduleBlockUpdate(x, y, z, this.blockID, getMusicSpeed());
-            }
+            if(temb.playNote()) world.scheduleBlockUpdate(x, y, z, this.blockID, getMusicSpeed()); // Try playing another note.
         }
     }
 }

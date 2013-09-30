@@ -15,7 +15,7 @@ public class ClientProxy extends CommonProxy {
             initSounds = true;
             try {
                 SoundManager soundManager = event.manager;
-                BlockMusicBox.addSounds(soundManager);
+                TileEntityMusicBox.addSounds(soundManager);
             }
             catch (Exception e) { e.printStackTrace(); }
         }
