@@ -9,12 +9,19 @@ import openperipheral.api.IPeripheralAdapter;
 import openperipheral.api.LuaMethod;
 import openperipheral.api.LuaType;
 import pl.asie.moducomp.ItemPaperTape;
+import pl.asie.moducomp.TileEntityMusicBox;
 import pl.asie.moducomp.TileEntityTapeReader;
 
 public class AdapterTapeReader implements IPeripheralAdapter {
 	@Override
 	public Class getTargetClass() {
 		return TileEntityTapeReader.class;
+	}
+	
+	@LuaMethod(returnType = LuaType.BOOLEAN, onTick = false, description = "Check if tape is inserted.", args = {})
+	public boolean isTapeInserted(IComputerAccess access, TileEntityTapeReader tapeReader) {
+		ItemStack tape = tapeReader.getStackInSlot(0);
+		return (tape != null && tape.getItem() instanceof ItemPaperTape);
 	}
 	
 	@LuaMethod(returnType = LuaType.NUMBER, onTick = false, description = "Seek the tape - returns number of bytes seeked.",

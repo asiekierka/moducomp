@@ -18,7 +18,7 @@ public class TileEntityMusicBox extends TileEntityInventory {
 		ModularComputing.logger.info("Initialized MusicBox sounds.");
 	}
 	
-	protected boolean playNote() {
+	public boolean playNote() {
 		ItemStack stack = this.getStackInSlot(0);
 		if(stack != null && stack.getItem() instanceof ItemPaperTape) {
 	    	ItemPaperTape tapeHandler = (ItemPaperTape)stack.getItem();

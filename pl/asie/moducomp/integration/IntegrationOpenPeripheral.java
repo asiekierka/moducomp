@@ -11,6 +11,8 @@ public class IntegrationOpenPeripheral implements IModIntegration {
 	
 	public void init() {
 		IntegrationRegistry integrationRegistry = new IntegrationRegistry();
+		
 		integrationRegistry.registerAdapter(new AdapterTapeReader());
+		integrationRegistry.registerAdapter(new AdapterMusicBox());
 	}
 }
