@@ -1,5 +1,6 @@
 package pl.asie.moducomp;
 
+import pl.asie.moducomp.block.TileEntityMusicBox;
 import net.minecraft.client.audio.SoundManager;
 import net.minecraftforge.client.event.sound.SoundLoadEvent;
 import net.minecraftforge.common.MinecraftForge;

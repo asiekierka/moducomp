@@ -8,9 +8,9 @@ import openperipheral.api.Arg;
 import openperipheral.api.IPeripheralAdapter;
 import openperipheral.api.LuaMethod;
 import openperipheral.api.LuaType;
-import pl.asie.moducomp.ItemPaperTape;
-import pl.asie.moducomp.TileEntityMusicBox;
-import pl.asie.moducomp.TileEntityTapeReader;
+import pl.asie.moducomp.block.TileEntityMusicBox;
+import pl.asie.moducomp.block.TileEntityTapeReader;
+import pl.asie.moducomp.item.ItemPaperTape;
 
 public class AdapterTapeReader implements IPeripheralAdapter {
 	@Override

@@ -2,8 +2,13 @@ package pl.asie.moducomp;
 
 import java.util.logging.Logger;
 
+import pl.asie.moducomp.block.BlockMusicBox;
+import pl.asie.moducomp.block.BlockTapeReader;
+import pl.asie.moducomp.block.TileEntityMusicBox;
+import pl.asie.moducomp.block.TileEntityTapeReader;
 import pl.asie.moducomp.integration.IntegrationOpenPeripheral;
 import pl.asie.moducomp.integration.ModIntegration;
+import pl.asie.moducomp.item.ItemPaperTape;
 import net.minecraft.block.material.Material;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;

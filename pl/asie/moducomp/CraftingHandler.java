@@ -2,6 +2,7 @@ package pl.asie.moducomp;
 
 import java.util.logging.Level;
 
+import pl.asie.moducomp.item.ItemPaperTape;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;

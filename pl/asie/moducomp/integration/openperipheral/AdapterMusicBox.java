@@ -6,8 +6,8 @@ import openperipheral.api.IPeripheralAdapter;
 import openperipheral.api.LuaMethod;
 import openperipheral.api.LuaType;
 import net.minecraft.item.ItemStack;
-import pl.asie.moducomp.ItemPaperTape;
-import pl.asie.moducomp.TileEntityMusicBox;
+import pl.asie.moducomp.block.TileEntityMusicBox;
+import pl.asie.moducomp.item.ItemPaperTape;
 
 public class AdapterMusicBox implements IPeripheralAdapter {
 	@Override

@@ -2,6 +2,8 @@ package pl.asie.moducomp;
 
 import java.io.*;
 import java.util.*;
+
+import pl.asie.moducomp.block.TileEntityTapeReader;
 import net.minecraft.src.*;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.world.World;
