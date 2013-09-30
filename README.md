@@ -1,7 +1,6 @@
-### Compilation
+Modular Computing is a mod that adds its own modular computational system, as well as peripherals - some of which are compatible with ComputerCraft via OpenPeripheral!
 
-To compile, you will need to add in APIs from the following mods:
+APIs included:
 
-* OpenPeripheral (src/openperipheral/api -> ./openperipheral/api) - https://github.com/OpenMods/OpenPeripheral
-
-Use your nearest Forge source code to install MCP and do its wizardly magic.
+* ComputerCraft (for CC compatibility)
+* OpenPeripheral (see above)
