@@ -74,7 +74,7 @@ public class ItemPaperTape extends Item implements ITape {
 		} else return null;
 	}
 
-	protected void setByte(ItemStack stack, int offset, byte val) {
+	public void setByte(ItemStack stack, byte val, int offset) {
 		if(check(stack)) {
 			NBTTagCompound compound = stack.getTagCompound();
 			byte[] data = compound.getByteArray("TapeData");

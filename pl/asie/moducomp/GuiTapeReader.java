@@ -76,11 +76,13 @@ public class GuiTapeReader extends GuiContainer
         ItemStack tape = tapeReaderEntity.getStackInSlot(0);
         if(tape != null && tape.getItem() instanceof ItemPaperTape) {
         	ItemPaperTape tapeHandler = (ItemPaperTape)tape.getItem();
+        	boolean changed = true;
         	if (key == 200) {
         		tapeHandler.seek(tape, -1);
         	} else if(key == 208) {
         		tapeHandler.seek(tape, 1);
-        	}
+        	} else changed = false;
+        	if(changed) PacketDispatcher.sendPacketToServer(sendPositionPacket()); // HACK!
         }
     }
    

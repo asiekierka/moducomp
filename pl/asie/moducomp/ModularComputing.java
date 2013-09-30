@@ -2,6 +2,8 @@ package pl.asie.moducomp;
 
 import java.util.logging.Logger;
 
+import pl.asie.moducomp.integration.IntegrationOpenPeripheral;
+import pl.asie.moducomp.integration.ModIntegration;
 import net.minecraft.block.material.Material;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -58,6 +60,11 @@ public class ModularComputing {
 	@EventHandler
 	public void init(FMLInitializationEvent event) {
     	proxy.addNames();
+
+    	ModIntegration integration = new ModIntegration();
+    	integration.addModIntegrator(new IntegrationOpenPeripheral());
+    	
+    	integration.init();
     	
     	GameRegistry.registerCraftingHandler(new CraftingHandler());
     	

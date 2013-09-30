@@ -20,7 +20,7 @@ public class TileEntityTapeReader extends TileEntityInventory {
 			tapeHandler.setPosition(stack, position);
 			byte value = tapeHandler.getByte(stack, offset);
 			value |= (byte)1<<shift;
-			tapeHandler.setByte(stack, offset, value);
+			tapeHandler.setByte(stack, value, offset);
 		}
 	}
 	
