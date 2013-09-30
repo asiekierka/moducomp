@@ -2,6 +2,7 @@ package pl.asie.moducomp;
 
 import java.util.logging.Level;
 
+import pl.asie.moducomp.lib.Helper;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.block.Block;
@@ -51,6 +52,11 @@ public class BlockTapeReader extends BlockContainer {
     {
         if(side == 1) return this.iconMT;
         else return this.iconMG;
+    }
+    
+	@Override
+    public void breakBlock(World world, int x, int y, int z, int id, int meta) {
+    	Helper.dropItems(world, x, y, z);
     }
     
 	@Override

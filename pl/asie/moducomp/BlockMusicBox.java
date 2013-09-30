@@ -3,6 +3,7 @@ package pl.asie.moducomp;
 import java.util.Random;
 import java.util.logging.Level;
 
+import pl.asie.moducomp.lib.Helper;
 import cpw.mods.fml.common.network.PacketDispatcher;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -94,6 +95,11 @@ public class BlockMusicBox extends BlockContainer {
 	
 	private static final String[] noteMapping = {"abOne", "bbOne", "cOne", "dbOne", "ebOne", "fOne", "gOne", "abTwo", "none", "bbTwo", "cTwo", "dbTwo", "ebTwo", "fTwo", "gTwo", "abThree"};
 
+	@Override
+    public void breakBlock(World world, int x, int y, int z, int id, int meta) {
+    	Helper.dropItems(world, x, y, z);
+    }
+	
 	protected static void addSounds(SoundManager manager) {
 		for(String note: noteMapping) {
 			if(note.equals("none")) continue;
