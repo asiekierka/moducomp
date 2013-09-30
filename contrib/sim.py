@@ -356,7 +356,6 @@ class CPU:
 
 		xval = self.regs[reg_x]
 
-
 		if op == 0x0:
 			# ASL/LSL
 			self.flag_set(F_CARRY, (xval & (0x10000>>imm)) != 0)
@@ -416,18 +415,19 @@ class CPU:
 				pass
 			elif op == 0x02:
 				# RET
-				pc_low = self.read16(self.regs[15])
-				pc_high = self.read8(self.regs[15]+2)
+				pc_low = self.read16(self.regs[15] | 0xF0000)
+				self.regs[15] += 2
+				pc_high = self.read8(self.regs[15] | 0xF0000)
+				self.regs[15] += 1
 				self.pc = (pc_low | (pc_high << 16)) & 0xFFFFF
-				self.regs[15] += 3
 			elif op == 0x04:
 				# POPF
-				self.flags = self.read16(self.regs[15])
+				self.flags = self.read16(self.regs[15] | 0xF0000)
 				self.regs[15] += 2
 			elif op == 0x06:
 				# PUSHF
 				self.regs[15] -= 2
-				self.write16(self.regs[15], self.flags)
+				self.write16(self.regs[15] | 0xF0000, self.flags)
 			elif op == 0x08:
 				# CLI
 				self.flags &= ~F_INT
@@ -529,9 +529,9 @@ class CPU:
 						pc_low = self.pc & 0xFFFF
 						pc_high = (self.pc >> 16) & 0x0F
 						self.regs[15] -= 1
-						self.write8(self.regs[15], pc_high)
+						self.write8(self.regs[15] | 0xF0000, pc_high)
 						self.regs[15] -= 2
-						self.write16(self.regs[15], pc_low)
+						self.write16(self.regs[15] | 0xF0000, pc_low)
 						self.pc = new_pc
 					else:
 						assert False
@@ -565,7 +565,7 @@ class CPU:
 
 memctl = StandardMemoryController()
 memctl.set_rom(StringROM(8<<10, open("bios.rom", "rb").read()))
-memctl.set_slot(0, RAM(4<<10))
+memctl.set_slot(0, RAM(4096))
 memctl.set_sys_slot(DebugSysSlot())
 cpu = CPU(memctl)
 cpu.cold_reset()

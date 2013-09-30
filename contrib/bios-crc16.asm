@@ -2,11 +2,38 @@
 
 	.org $FE000
 crc_base:
-	.dw $550F
+	.dw $1C32
 code_start:
-	; Clear interrupts, set up stack.
+	; Clear interrupts
 	cli
-	move.w @15, #$0100 ; Assume 256 bytes minimum
+
+	; Check if we have RAM in the "low" 256 bytes
+	xor.w @2, @2
+	lp_ckram1:
+		; Write RAM to $00000
+		st.b $00000, @2, @2
+		add.b @2, #1
+		cmp.b @2, #$00
+		jnz lp_ckram1
+	lp_ckram2:
+		; Read RAM from $F0000 and compare (1. we need this alias, and 2. we don't want any "cache" to screw us over should we ever add one)
+		ld.b @1, $F0000, @2
+		cmp.b @1, @2
+		jnz lpf_ckram
+		add.b @2, #1
+		cmp.b @2, #$00
+		jnz lp_ckram2
+		jmp lpx_ckram_ok
+	lpf_ckram:
+		; Welp. We can't put a stack anywhere.
+		; We have to use this nasty hack.
+		move.w @1, #str_ram0_fail
+		move.w @15, #vec_cli_idle
+		jmp putsF
+	lpx_ckram_ok:
+
+	; Set stack pointer
+	move.w @15, #$0100
 
 	; Set up our interrupt vector.
 	move.w @1, #int_vec
@@ -81,15 +108,15 @@ start:
 	jz crc_pass
 		move.w @1, #str_fail
 		jsr putsF
-		cli
-		jmp idle
+		jmp cli_idle
 crc_pass:
 	move.w @1, #str_ok
 	jsr putsF
 
+	jmp cli_idle
+
+cli_idle:
 	cli
-	jmp idle
-	
 idle:
 	hlt
 	jmp idle
@@ -108,15 +135,17 @@ putsF_lp1:
 		jmp putsF_lp1
 putsF_ret:
 	ret
-	
-code_end:
 
-str_error: .db "ERROR: ", 0
-str_err_ram0: .db "RAM required in slot 0", 0
+str_ram0_fail: .db "ERROR: No RAM in slot 0\n", 0
 str_crc_testing: .db "Testing CRC16...", 0
 str_ok: .db "OK\n", 0
 str_fail: .db "FAIL\n", 0
 
+vec_cli_idle:
+	.dw cli_idle
+	.db $0F
+
+code_end:
 	.org $FFF80
 	.dw $0000 ; version identifier
 	.db "Areia-1 BIOS ROM", $00
