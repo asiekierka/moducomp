@@ -2,7 +2,6 @@ package pl.asie.moducomp.integration.openperipheral;
 
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.common.ForgeDirection;
-import buildcraft.api.power.IPowerReceptor;
 import dan200.computer.api.IComputerAccess;
 import openperipheral.api.Arg;
 import openperipheral.api.IPeripheralAdapter;
