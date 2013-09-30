@@ -55,6 +55,7 @@ public class Helper {
                         ItemStack item = inventory.getStackInSlot(i);
 
                         if (item != null && item.stackSize > 0) {
+                        		inventory.setInventorySlotContents(i, null);
                                 float rx = rand.nextFloat() * 0.8F + 0.1F;
                                 float ry = rand.nextFloat() * 0.8F + 0.1F;
                                 float rz = rand.nextFloat() * 0.8F + 0.1F;
