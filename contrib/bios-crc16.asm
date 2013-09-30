@@ -2,11 +2,38 @@
 
 	.org $FE000
 crc_base:
-	.dw $E77D
+	.dw $1C32
 code_start:
-	; Clear interrupts, set up stack.
+	; Clear interrupts
 	cli
-	move.w @15, #$0100 ; Assume 256 bytes minimum
+
+	; Check if we have RAM in the "low" 256 bytes
+	xor.w @2, @2
+	lp_ckram1:
+		; Write RAM to $00000
+		st.b $00000, @2, @2
+		add.b @2, #1
+		cmp.b @2, #$00
+		jnz lp_ckram1
+	lp_ckram2:
+		; Read RAM from $F0000 and compare (1. we need this alias, and 2. we don't want any "cache" to screw us over should we ever add one)
+		ld.b @1, $F0000, @2
+		cmp.b @1, @2
+		jnz lpf_ckram
+		add.b @2, #1
+		cmp.b @2, #$00
+		jnz lp_ckram2
+		jmp lpx_ckram_ok
+	lpf_ckram:
+		; Welp. We can't put a stack anywhere.
+		; We have to use this nasty hack.
+		move.w @1, #str_ram0_fail
+		move.w @15, #vec_cli_idle
+		jmp putsF
+	lpx_ckram_ok:
+
+	; Set stack pointer
+	move.w @15, #$0100
 
 	; Set up our interrupt vector.
 	move.w @1, #int_vec
@@ -43,6 +70,8 @@ start:
 	; @3 = in-byte counter
 	; @4 = a byte we are reading
 
+	move.w @1, #str_crc_testing
+	jsr putsF
 	move.w @1, #$FFFF
 	move.w @2, #code_start
 	crc_lp1:
@@ -73,14 +102,50 @@ start:
 	
 	; check CRC
 	ld.w @2, $FE000 ; labels don't work in ld/st in the assembler yet - FIX THIS
+	move.w @13, @1
+	move.w @14, @2
 	xor.w @1, @2
-	
-idle:
-	cli
-	hlt
-	; This code should halt and never get an interrupt.
-code_end:
+	jz crc_pass
+		move.w @1, #str_fail
+		jsr putsF
+		jmp cli_idle
+crc_pass:
+	move.w @1, #str_ok
+	jsr putsF
 
+	jmp cli_idle
+
+cli_idle:
+	cli
+idle:
+	hlt
+	jmp idle
+
+	; INPUT:
+	;   @1 = input string in $Fxxxx bank
+	; CLOBBERS: @1, @2
+putsF:
+	move.w @2, @1
+putsF_lp1:
+	ld.b @1, $F0000, @2
+	and.b @1, @1
+	jz putsF_ret
+		add.w @2, #1
+		st.b $FDFFE, @1
+		jmp putsF_lp1
+putsF_ret:
+	ret
+
+str_ram0_fail: .db "ERROR: No RAM in slot 0\n", 0
+str_crc_testing: .db "Testing CRC16...", 0
+str_ok: .db "OK\n", 0
+str_fail: .db "FAIL\n", 0
+
+vec_cli_idle:
+	.dw cli_idle
+	.db $0F
+
+code_end:
 	.org $FFF80
 	.dw $0000 ; version identifier
 	.db "Areia-1 BIOS ROM", $00

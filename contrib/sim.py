@@ -77,6 +77,22 @@ class RAM(Memory):
 		else:
 			return 0
 
+class DebugSysSlot(Memory):
+	def read8(self, addr):
+		if addr & 0x200000:
+			addr &= 0xff
+			if addr == 0xfe:
+				return 0, 0xff
+		return 0, 0xff
+
+	def write8(self, addr, val):
+		if addr & 0x200000:
+			addr &= 0xff
+			if addr == 0xfe:
+				sys.stdout.write(chr(val) if val <= 0x7F else ".")
+				return 0
+		return 0
+
 class StandardMemoryController(Memory):
 	def __init__(self):
 		self.slots = [None for i in xrange(15)]
@@ -107,7 +123,7 @@ class StandardMemoryController(Memory):
 				pass
 			elif lower < 0xDFFF:
 				# I/O region
-				bank2 = (addr>>8) & 0xFF
+				bank2 = (addr>>8) & 0xF
 				if bank2 == 0xF:
 					slot = self.sys_slot
 				else:
@@ -230,6 +246,14 @@ class CPU:
 	def flag_zero(self, v):
 		self.flag_set(F_ZERO, v == 0)
 
+	def flag_parity(self, v):
+		v &= 0xFFFF
+		v = ((v&0xAAAA)>>1)+(v&0x5555)
+		v = ((v&0xCCCC)>>2)+(v&0x3333)
+		v = ((v&0xF0F0)>>4)+(v&0x0F0F)
+		v = ((v&0xFF00)>>8)+(v&0x00FF)
+		self.flag_set(F_OVER, (v & 1) != 0)
+
 	def flag_sign(self, v):
 		self.flag_set(F_SIGN, v != 0)
 
@@ -260,11 +284,36 @@ class CPU:
 					self.flag_set(F_CARRY, xval + imm >= 0x10000)
 				else:
 					self.flag_set(F_CARRY, xval + imm >= 0x100)
+
 				retval = xval + imm
+
+				if ((xval ^ imm) & 0x8000) == 0:
+					# same signs
+					aimm = (imm if imm < 0x8000 else 0x10000-imm)
+					axval = (xval if xval < 0x8000 else 0x10000-xval)
+					if size:
+						self.flag_set(F_OVER, aimm + axval >= 0x8000)
+					else:
+						self.flag_set(F_OVER, aimm + axval >= 0x80)
+				else:
+					# differing signs
+					self.flag_set(F_OVER, False)
 			else:
 				# CMP/SUB
 				self.flag_set(F_CARRY, xval < imm) 
 				retval = xval - imm
+
+				if ((xval ^ imm) & 0x8000) != 0:
+					# differing signs
+					aimm = (imm if imm < 0x8000 else 0x10000-imm)
+					axval = (xval if xval < 0x8000 else 0x10000-xval)
+					if size:
+						self.flag_set(F_OVER, aimm + axval >= 0x8000)
+					else:
+						self.flag_set(F_OVER, aimm + axval >= 0x80)
+				else:
+					# same signs
+					self.flag_set(F_OVER, False)
 
 			if size:
 				retval &= 0xFFFF
@@ -293,9 +342,11 @@ class CPU:
 
 			if size:
 				self.flag_zero(self.regs[reg_x] & 0xFFFF)
+				self.flag_parity(self.regs[reg_x] & 0xFFFF)
 				self.flag_sign(self.regs[reg_x] & 0x8000)
 			else:
 				self.flag_zero(self.regs[reg_x] & 0xFF)
+				self.flag_parity(self.regs[reg_x] & 0xFFFF)
 				self.flag_sign(self.regs[reg_x] & 0x80)
 
 	def do_op2(self, imm_isnt_y, op, reg_x, imm):
@@ -304,7 +355,6 @@ class CPU:
 			imm = self.regs[imm] & 0x0F
 
 		xval = self.regs[reg_x]
-
 
 		if op == 0x0:
 			# ASL/LSL
@@ -358,25 +408,26 @@ class CPU:
 		#print "%05X: %02X" % (self.pc-1, op)
 		#print " ".join("%04X" % v for v in self.regs)
 
-		if (op & 0x0F) == 0:
+		if (op & 0x0F) == 0 and (op & 0xF0) != 0xF0:
 			op >>= 4
 			if op == 0x00:
 				# NOP
 				pass
 			elif op == 0x02:
 				# RET
-				pc_low = self.read16(self.regs[15])
-				pc_high = self.read8(self.regs[15]+2)
+				pc_low = self.read16(self.regs[15] | 0xF0000)
+				self.regs[15] += 2
+				pc_high = self.read8(self.regs[15] | 0xF0000)
+				self.regs[15] += 1
 				self.pc = (pc_low | (pc_high << 16)) & 0xFFFFF
-				self.regs[15] += 3
 			elif op == 0x04:
 				# POPF
-				self.flags = self.read16(self.regs[15])
+				self.flags = self.read16(self.regs[15] | 0xF0000)
 				self.regs[15] += 2
 			elif op == 0x06:
 				# PUSHF
 				self.regs[15] -= 2
-				self.write16(self.regs[15], self.flags)
+				self.write16(self.regs[15] | 0xF0000, self.flags)
 			elif op == 0x08:
 				# CLI
 				self.flags &= ~F_INT
@@ -477,10 +528,10 @@ class CPU:
 					elif op2 == 0x9: # JSR
 						pc_low = self.pc & 0xFFFF
 						pc_high = (self.pc >> 16) & 0x0F
-						self.regs[15] -= 2
-						self.write16(self.regs[15], pc_low)
 						self.regs[15] -= 1
-						self.write8(self.regs[15], pc_high)
+						self.write8(self.regs[15] | 0xF0000, pc_high)
+						self.regs[15] -= 2
+						self.write16(self.regs[15] | 0xF0000, pc_low)
 						self.pc = new_pc
 					else:
 						assert False
@@ -514,7 +565,8 @@ class CPU:
 
 memctl = StandardMemoryController()
 memctl.set_rom(StringROM(8<<10, open("bios.rom", "rb").read()))
-memctl.set_slot(0, RAM(4<<10))
+memctl.set_slot(0, RAM(4096))
+memctl.set_sys_slot(DebugSysSlot())
 cpu = CPU(memctl)
 cpu.cold_reset()
 cpu.run_until_halt()
