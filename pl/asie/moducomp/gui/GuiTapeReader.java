@@ -9,7 +9,7 @@ import java.util.logging.Level;
 import org.lwjgl.opengl.GL11;
 
 import pl.asie.moducomp.NetworkHandler;
-import pl.asie.moducomp.api.ITape;
+import pl.asie.moducomp.api.IItemTape;
 import pl.asie.moducomp.block.TileEntityTapeReader;
 import pl.asie.moducomp.item.ItemPaperTape;
 import net.minecraft.client.gui.GuiButton;
@@ -59,7 +59,7 @@ public class GuiTapeReader extends GuiContainer
     		{98, 36} // clock
     };
 
-    protected void drawTape(ItemStack tape, ITape tapeHandler, int offset, int xo, int yo) {
+    protected void drawTape(ItemStack tape, IItemTape tapeHandler, int offset, int xo, int yo) {
     	if(tapeHandler.isValid(tape, offset)) {
     		int value = tapeHandler.getByte(tape, offset) & 0xFF;
     		for(int i = 0; i <= 8; i++) { // bit 8 is clock, <= is VALID

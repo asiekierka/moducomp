@@ -9,13 +9,14 @@ import pl.asie.moducomp.lib.SlotTyped;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.item.ItemStack;
+import net.minecraft.tileentity.TileEntity;
 
 public class ContainerMusicBox extends ContainerInventory {
 	protected TileEntityMusicBox tileEntity;
 
-	public ContainerMusicBox(InventoryPlayer inventoryPlayer, TileEntityMusicBox te) {
+	public ContainerMusicBox(InventoryPlayer inventoryPlayer, TileEntityMusicBox tileEntity2) {
 		super(1);
-		tileEntity = te;
+		tileEntity = tileEntity2;
 		addSlotToContainer(new SlotTyped(ItemPaperTape.class, tileEntity, 0, 80, 20));
 		bindPlayerInventory(inventoryPlayer, 8, 52);
 	}

@@ -3,18 +3,22 @@ package pl.asie.moducomp;
 import java.util.logging.Logger;
 
 import pl.asie.moducomp.block.BlockMusicBox;
+import pl.asie.moducomp.block.BlockRAMBoard;
 import pl.asie.moducomp.block.BlockTapeReader;
+import pl.asie.moducomp.block.ITileEntityOwner;
 import pl.asie.moducomp.block.TileEntityMusicBox;
 import pl.asie.moducomp.block.TileEntityTapeReader;
 import pl.asie.moducomp.integration.IntegrationOpenPeripheral;
 import pl.asie.moducomp.integration.ModIntegration;
 import pl.asie.moducomp.item.ItemPaperTape;
+import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.common.Configuration;
 import cpw.mods.fml.common.*;
-import cpw.mods.fml.common.Mod.*;
+import cpw.mods.fml.common.Mod.Instance;
+import cpw.mods.fml.common.Mod.EventHandler;
 import cpw.mods.fml.common.event.*;
 import cpw.mods.fml.common.network.*;
 import cpw.mods.fml.common.registry.GameRegistry;
@@ -28,7 +32,10 @@ public class ModularComputing {
 	
 	public BlockTapeReader blockTapeReader;
 	public BlockMusicBox blockMusicBox;
+	public BlockRAMBoard blockRAMBoard;
 	public ItemPaperTape itemPaperTape;
+	
+	private Configuration config;
 	
 	@SidedProxy(clientSide="pl.asie.moducomp.ClientProxy", serverSide="pl.asie.moducomp.CommonProxy")
 	public static CommonProxy proxy;
@@ -38,25 +45,39 @@ public class ModularComputing {
         if(DEBUG) logger.info(string);
     }
     
+    public Block registerBlock(Class<? extends Block> blockClass, String name, int defaultID) {
+    	try {
+    		Block block = blockClass.getConstructor(Integer.TYPE).newInstance(config.getBlock(name, defaultID).getInt());
+    		GameRegistry.registerBlock(block, name);
+    		if(block instanceof ITileEntityOwner) {
+    			ITileEntityOwner teOwner = (ITileEntityOwner)block;
+    			GameRegistry.registerTileEntity(teOwner.getTileEntityClass(), name);
+    		}
+    		return block;
+    	} catch(Exception e) { e.printStackTrace(); return null; }
+    }
+    
+    public Item registerItem(Class<? extends Item> itemClass, String name, int defaultID) {
+    	try {
+    		Item item = itemClass.getConstructor(Integer.TYPE).newInstance(config.getItem(name, defaultID).getInt());
+    		GameRegistry.registerItem(item, name);
+    		return item;
+    	} catch(Exception e) { e.printStackTrace(); return null; }
+    }
+    
     @EventHandler
     public void preInit(FMLPreInitializationEvent event) {
     	logger = Logger.getLogger("moducomp");
     	logger.setParent(FMLLog.getLogger());
     	
-    	Configuration config = new Configuration(event.getSuggestedConfigurationFile());
+    	config = new Configuration(event.getSuggestedConfigurationFile());
     	config.load();
     	
-    	blockTapeReader = new BlockTapeReader(config.getBlock("moducomp.tape_reader", 1920).getInt(), Material.circuits);
-    	blockMusicBox = new BlockMusicBox(config.getBlock("moducomp.music_box", 1921).getInt(), Material.circuits);
-    	itemPaperTape = new ItemPaperTape(config.getItem("moducomp.paper_tape", 19200).getInt());
-
-    	GameRegistry.registerBlock(blockTapeReader, "moducomp.tape_reader");
-    	GameRegistry.registerBlock(blockMusicBox, "moducomp.music_box");
+    	blockTapeReader = (BlockTapeReader) registerBlock(BlockTapeReader.class, "moducomp.tape_reader", 1920);
+    	blockMusicBox = (BlockMusicBox) registerBlock(BlockMusicBox.class, "moducomp.music_box", 1921);
+    	blockRAMBoard = (BlockRAMBoard) registerBlock(BlockRAMBoard.class, "moducomp.ram_board", 1922);
     	
-    	GameRegistry.registerTileEntity(TileEntityTapeReader.class, "moducomp.tape_reader");
-    	GameRegistry.registerTileEntity(TileEntityMusicBox.class, "moducomp.music_box");
-    	
-    	GameRegistry.registerItem(itemPaperTape, "moducomp.paper_tape");
+    	itemPaperTape = (ItemPaperTape) registerItem(ItemPaperTape.class, "moducomp.paper_tape", 19200);
 
     	config.save();
     	proxy.setupEvents();

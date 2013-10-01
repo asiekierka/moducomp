@@ -4,14 +4,14 @@ import java.util.List;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import pl.asie.moducomp.api.ITape;
+import pl.asie.moducomp.api.IItemTape;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 
-public class ItemPaperTape extends Item implements ITape {
+public class ItemPaperTape extends Item implements IItemTape {
 	public static final int MAX_TAPE_LENGTH = (65536/32);
 	
 	public ItemPaperTape(int id) {

@@ -4,6 +4,7 @@ import java.util.logging.Level;
 
 import pl.asie.moducomp.ModularComputing;
 import pl.asie.moducomp.lib.Helper;
+import pl.asie.moducomp.lib.TileEntityInventory;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.block.Block;
@@ -16,16 +17,16 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.Icon;
 import net.minecraft.world.World;
 
-public class BlockTapeReader extends BlockContainer implements ITileEntityOwner {
+public class BlockRAMBoard extends BlockContainer implements ITileEntityOwner {
 	private Icon iconMG, iconMT;
+
+	public Class<? extends TileEntity> getTileEntityClass() { return TileEntityRAMBoard.class; }
 	
-	public Class<? extends TileEntity> getTileEntityClass() { return TileEntityTapeReader.class; }
-	
-    public BlockTapeReader(int id) 
+    public BlockRAMBoard(int id) 
     {
         	super(id, Material.circuits);
     		this.setHardness(4.5F);
-    		this.setUnlocalizedName("block.moducomp.tape_reader");
+    		this.setUnlocalizedName("block.moducomp.ram_board");
     		this.setCreativeTab(CreativeTabs.tabRedstone);
     		this.setBlockBounds(0.0F, 0.0F, 0.0F, 1.0F, 0.875F, 1.0F); // Aesthetics.
     }
@@ -35,7 +36,7 @@ public class BlockTapeReader extends BlockContainer implements ITileEntityOwner 
     public void registerIcons (IconRegister iconRegister)
     {
     	this.iconMG = iconRegister.registerIcon("moducomp:machine_generic");
-    	this.iconMT = iconRegister.registerIcon("moducomp:tape_reader_top");
+    	this.iconMT = iconRegister.registerIcon("moducomp:machine_generic"); // TODO
     }
 
     public boolean isOpaqueCube() { return false; }
@@ -64,6 +65,6 @@ public class BlockTapeReader extends BlockContainer implements ITileEntityOwner 
     
 	@Override
 	public TileEntity createNewTileEntity(World world) {
-		return new TileEntityTapeReader();
+		return new TileEntityRAMBoard();
 	}
 }

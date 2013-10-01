@@ -22,12 +22,14 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.Icon;
 import net.minecraft.world.World;
 
-public class BlockMusicBox extends BlockContainer {
+public class BlockMusicBox extends BlockContainer implements ITileEntityOwner {
 	private Icon iconMG, iconMT;
 	
-    public BlockMusicBox(int id, Material material) 
+	public Class<? extends TileEntity> getTileEntityClass() { return TileEntityMusicBox.class; }
+	
+    public BlockMusicBox(int id) 
     {
-            super(id, material);
+            super(id, Material.circuits);
     		this.setHardness(4.5F);
     		this.setUnlocalizedName("block.moducomp.music_box");
     		this.setCreativeTab(CreativeTabs.tabRedstone);
