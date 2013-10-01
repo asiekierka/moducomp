@@ -17,18 +17,13 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.Icon;
 import net.minecraft.world.World;
 
-public class BlockRAMBoard extends BlockContainer implements ITileEntityOwner {
+public class BlockRAMBoard extends BlockMachine implements ITileEntityOwner {
 	private Icon iconMG, iconMT;
 
 	public Class<? extends TileEntity> getTileEntityClass() { return TileEntityRAMBoard.class; }
 	
-    public BlockRAMBoard(int id) 
-    {
-        	super(id, Material.circuits);
-    		this.setHardness(4.5F);
-    		this.setUnlocalizedName("block.moducomp.ram_board");
-    		this.setCreativeTab(CreativeTabs.tabRedstone);
-    		this.setBlockBounds(0.0F, 0.0F, 0.0F, 1.0F, 0.875F, 1.0F); // Aesthetics.
+    public BlockRAMBoard(int id, String name) {
+    	super(id, name);
     }
     
     @Override
@@ -38,17 +33,6 @@ public class BlockRAMBoard extends BlockContainer implements ITileEntityOwner {
     	this.iconMG = iconRegister.registerIcon("moducomp:machine_generic");
     	this.iconMT = iconRegister.registerIcon("moducomp:machine_generic"); // TODO
     }
-
-    public boolean isOpaqueCube() { return false; }
-    public boolean renderAsNormalBlock() { return false; }
-    
-    @Override
-	public boolean onBlockActivated(World world, int x, int y, int z, EntityPlayer player, int par6, float par7, float par8, float par9) {
-		if(!world.isRemote || player.isSneaking()) {
-			player.openGui(ModularComputing.instance, 0, world, x, y, z);
-		}
-		return true;
-	}
 	
     @Override
     @SideOnly(Side.CLIENT)
@@ -56,11 +40,6 @@ public class BlockRAMBoard extends BlockContainer implements ITileEntityOwner {
     {
         if(side == 1) return this.iconMT;
         else return this.iconMG;
-    }
-    
-	@Override
-    public void breakBlock(World world, int x, int y, int z, int id, int meta) {
-    	Helper.dropItems(world, x, y, z);
     }
     
 	@Override

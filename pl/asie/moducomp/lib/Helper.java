@@ -46,7 +46,7 @@ public class Helper {
 	public static void dropItems(World world, int x, int y, int z) {
 		Random rand = new Random();
 		TileEntity tileEntity = world.getBlockTileEntity(x, y, z);
-		if (!(tileEntity instanceof IInventory)) {
+		if (tileEntity == null || !(tileEntity instanceof IInventory)) {
 			return;
 		}
 		IInventory inventory = (IInventory) tileEntity;

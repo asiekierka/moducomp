@@ -2,6 +2,7 @@ package pl.asie.moducomp;
 
 import java.util.logging.Logger;
 
+import pl.asie.moducomp.block.BlockMachine;
 import pl.asie.moducomp.block.BlockMusicBox;
 import pl.asie.moducomp.block.BlockRAMBoard;
 import pl.asie.moducomp.block.BlockTapeReader;
@@ -46,8 +47,14 @@ public class ModularComputing {
     }
     
     public Block registerBlock(Class<? extends Block> blockClass, String name, int defaultID) {
+    	int id = config.getBlock(name, defaultID).getInt();
     	try {
-    		Block block = blockClass.getConstructor(Integer.TYPE).newInstance(config.getBlock(name, defaultID).getInt());
+    		Block block;
+    		if(blockClass.isInstance(BlockMachine.class)) {
+    			block = blockClass.getConstructor(Integer.TYPE, String.class).newInstance(id, name);
+    		} else {
+    			block = blockClass.getConstructor(Integer.TYPE).newInstance(id);
+    		}
     		GameRegistry.registerBlock(block, name);
     		if(block instanceof ITileEntityOwner) {
     			ITileEntityOwner teOwner = (ITileEntityOwner)block;
