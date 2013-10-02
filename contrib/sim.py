@@ -9,7 +9,6 @@ SHADOW_ENABLED = True
 TRIG_RECALC = -3
 TRIG_DYNA = -2
 TRIG_OPEN = -1
-TRIG_FAIL = None
 
 F_ZERO = 0x0001
 F_CARRY = 0x0002
@@ -43,7 +42,7 @@ class Memory:
 	def get_shadow_address(self, addr):
 		return TRIG_DYNA
 	
-	def read8(self, addr, trigger):
+	def read8(self, addr):
 		return 0, 0xFF
 
 	def write8(self, cpu, addr, val):
@@ -70,7 +69,7 @@ class StringROM(Memory):
 		else:
 			return addr & (self.size-1)
 	
-	def read8(self, addr, trigger):
+	def read8(self, addr):
 		if addr & 0x200000:
 			return 0, ord(self.confspace[addr & (len(self.confspace)-1)])
 		else:
@@ -95,7 +94,7 @@ class RAM(Memory):
 		else:
 			return addr & (self.size-1)
 
-	def read8(self, addr, trigger):
+	def read8(self, addr):
 		if addr & 0x200000:
 			return 0, ord(self.confspace[addr & (len(self.confspace)-1)])
 		else:
@@ -109,7 +108,7 @@ class RAM(Memory):
 			return 0
 
 class DebugSysSlot(Memory):
-	def read8(self, addr, trigger):
+	def read8(self, addr):
 		if addr & 0x200000:
 			addr &= 0xff
 			if addr == 0xfe:
@@ -209,27 +208,32 @@ class StandardMemoryController(Memory):
 						return TRIG_OPEN
 					else:
 						offs = self.saddr_sys
-						return offs + self.sys_slot.get_shadow_address((addr & 0xFF) | 0x200000)
+						ra = self.sys_slot.get_shadow_address((addr & 0xFF) | 0x200000)
 				elif self.slots[subbank] == None:
 					return TRIG_OPEN
 				else:
 					offs = self.saddr_slots[subbank]
-					return offs + self.slots[subbank].get_shadow_address((addr & 0xFF) | 0x200000)
+					ra = self.slots[subbank].get_shadow_address((addr & 0xFF) | 0x200000)
 			elif self.rom == None:
 				return TRIG_OPEN
 			else:
 				assert bsel >= 0xE and bsel <= 0xF
 				offs = self.saddr_rom
 				#print offs, self.rom.get_shadow_size()
-				return offs + self.rom.get_shadow_address((addr & 0x1FFF))
+				ra = self.rom.get_shadow_address((addr & 0x1FFF))
 		elif self.slots[bank] == None:
 			return TRIG_OPEN
 		else:
 			offs = self.saddr_slots[bank]
-			return offs + self.slots[bank].get_shadow_address(addr & 0xFFFF)
+			ra = self.slots[bank].get_shadow_address(addr & 0xFFFF)
+		
+		if ra >= 0:
+			return offs + ra
+		else:
+			return ra
 
-	def read8(self, addr, trigger):
-		return self.route(addr, lambda slot, addr, trigger: slot.read8(addr, trigger) if slot != None else (0, 0xFF), trigger)
+	def read8(self, addr):
+		return self.route(addr, lambda slot, addr: slot.read8(addr) if slot != None else (0, 0xFF))
 
 	def write8(self, cpu, addr, val):
 		return self.route(addr, lambda slot, addr, cpu, val: slot.write8(cpu, addr, val) if slot != None else 0, cpu, val)
@@ -260,7 +264,7 @@ class CPU:
 		if saddr >= 0:
 			self.shadow_mask[saddr>>5] &= ~(1<<(saddr&31))
 
-	def readcfg(self, addr, trigger):
+	def readcfg(self, addr):
 		return 0, self.cfg[addr & 0x7F]
 
 	def writecfg(self, addr, val):
@@ -287,52 +291,37 @@ class CPU:
 		v0 = self.write8(addr, (val & 0xFF))
 		v1 = self.write8(addr+1, (val >> 8) & 0xFF)
 
-	def read16(self, addr, trigger):
-		if trigger:
-			v = self.read16(addr, False)
-			if v != TRIG_FAIL:
-				return v
-		v0 = self.read8(addr, trigger)
-		v1 = self.read8(addr+1, trigger)
-		if v0 == TRIG_FAIL or v1 == TRIG_FAIL:
-			return TRIG_FAIL
+	def read16(self, addr):
+		v0 = self.read8(addr)
+		v1 = self.read8(addr+1)
 		val = v0 | (v1<<8)
 		return val
 
-	def read8(self, addr, trigger):
+	def read8(self, addr):
 		if SHADOW_ENABLED:
-			if trigger:
-				v = self.read8(addr, False)
-				if v != TRIG_FAIL:
-					return v
-			else:
-				saddr = self.shadow_addr[addr]
-				if saddr >= 0:
-					if (self.shadow_mask[saddr>>5] & (1<<(saddr&31))) != 0:
-						self.cycles += self.shadow_cyc[saddr]+1
-						return self.shadow_data[saddr]
-				elif saddr == TRIG_OPEN:
-					self.cycles += 1
-					return 0xFF
+			saddr = self.shadow_addr[addr]
+			if saddr >= 0:
+				if (self.shadow_mask[saddr>>5] & (1<<(saddr&31))) != 0:
+					self.cycles += self.shadow_cyc[saddr]+1
+					return self.shadow_data[saddr]
+			elif saddr == TRIG_OPEN:
+				self.cycles += 1
+				return 0xFF
 
-		saddr = TRIG_DYNA
 		if self.needs_full_reset or addr < 0xFFF80:
-			cyc, val = self.memctl.read8(addr, trigger)
+			cyc, val = self.memctl.read8(addr)
 			if SHADOW_ENABLED:
 				saddr = self.memctl.get_shadow_address(addr)
 		else:
-			cyc, val = self.readcfg(addr & 0x7F, trigger)
+			cyc, val = self.readcfg(addr & 0x7F)
 			if SHADOW_ENABLED:
 				saddr = self.shadow_count - 128 + (addr & 127)
-
-		if val == TRIG_FAIL:
-			return TRIG_FAIL
 
 		self.cycles += cyc+1
 
 		assert (val&~0xFF) == 0
 
-		if SHADOW_ENABLED and not trigger:
+		if SHADOW_ENABLED:
 			self.shadow_addr[addr] = saddr
 			if saddr >= 0:
 				self.shadow_cyc[saddr] = cyc
@@ -343,25 +332,21 @@ class CPU:
 
 		return val
 
-	def fetch8(self, trigger):
-		val = self.read8(self.pc, trigger)
-		if val == TRIG_FAIL:
-			return TRIG_FAIL
+	def fetch8(self):
+		val = self.read8(self.pc)
 		self.pc = (self.pc + 1) & 0xFFFFF
 		return val
 
-	def fetch16(self, trigger):
-		val = self.read16(self.pc, trigger)
-		if val == TRIG_FAIL:
-			return TRIG_FAIL
+	def fetch16(self):
+		val = self.read16(self.pc)
 		self.pc = (self.pc + 2) & 0xFFFFF
 		return val
 
 	def cold_reset(self):
 		self.needs_full_reset = True
 		self.pc = 0xFFFFC
-		pc_low = self.fetch16(True)
-		pc_high = self.fetch8(True)
+		pc_low = self.fetch16()
+		pc_high = self.fetch8()
 		self.writecfg(0xFFFFFC, pc_low&0xFF)
 		self.writecfg(0xFFFFFD, pc_low>>8)
 		self.writecfg(0xFFFFFE, pc_high)
@@ -377,8 +362,8 @@ class CPU:
 			self.regs[i] = 0
 		self.flags = 0
 		self.pc = 0xFFFFC
-		pc_low = self.fetch16(True)
-		pc_high = self.fetch8(True)
+		pc_low = self.fetch16()
+		pc_high = self.fetch8()
 		self.pc = (pc_low | (pc_high << 16)) & 0xFFFFF
 		print "Soft Reset PC: %05X" % self.pc
 		self.halted = False
@@ -549,7 +534,7 @@ class CPU:
 			self.cycles += 1
 			return
 
-		op = self.fetch8(True)
+		op = self.fetch8()
 
 		#print "%05X: %02X" % (self.pc-1, op)
 		#print " ".join("%04X" % v for v in self.regs)
@@ -561,19 +546,19 @@ class CPU:
 				pass
 			elif op == 0x02:
 				# RET
-				pc_low = self.read16(self.regs[15] | 0xF0000, True)
+				pc_low = self.read16(self.regs[15] | 0xF0000)
 				self.regs[15] += 2
-				pc_high = self.read8(self.regs[15] | 0xF0000, True)
+				pc_high = self.read8(self.regs[15] | 0xF0000)
 				self.regs[15] += 1
 				self.pc = (pc_low | (pc_high << 16)) & 0xFFFFF
 			elif op == 0x04:
 				# POPF
-				self.flags = self.read16(self.regs[15] | 0xF0000, True)
+				self.flags = self.read16(self.regs[15] | 0xF0000)
 				self.regs[15] += 2
 			elif op == 0x06:
 				# PUSHF
 				self.regs[15] -= 2
-				self.write16(self.regs[15] | 0xF0000, self.flags, True)
+				self.write16(self.regs[15] | 0xF0000, self.flags)
 			elif op == 0x08:
 				# CLI
 				self.flags &= ~F_INT
@@ -590,7 +575,7 @@ class CPU:
 			subop = op & 7
 			if subop == 7:
 				# OP3 / OP4
-				op2 = self.fetch8(True)
+				op2 = self.fetch8()
 				reg_x = op2 & 0x0F
 				op2 >>= 4
 
@@ -601,21 +586,21 @@ class CPU:
 					op2 >>= 1
 					if op2 == 1:
 						# $Faaaa
-						imm = 0xF0000 + self.fetch16(True)
+						imm = 0xF0000 + self.fetch16()
 					elif op2 == 2:
 						# $baa00, @y
-						op_yb = self.fetch8(True)
+						op_yb = self.fetch8()
 						reg_y = (op_yb>>4)
 						op_yb &= 0x0F
 
-						imm = (op_yb<<16) + (self.fetch8(True)<<8) + self.regs[reg_y]
+						imm = (op_yb<<16) + (self.fetch8()<<8) + self.regs[reg_y]
 					elif op2 == 3:
 						# $baaaa, @y
-						op_yb = self.fetch8(True)
+						op_yb = self.fetch8()
 						reg_y = (op_yb>>4)
 						op_yb &= 0x0F
 
-						imm = (op_yb<<16) + self.fetch16(True) + self.regs[reg_y]
+						imm = (op_yb<<16) + self.fetch16() + self.regs[reg_y]
 					else:
 						assert False
 
@@ -628,11 +613,11 @@ class CPU:
 					else:
 						# LD
 						if size:
-							val = self.read16(imm, True)
+							val = self.read16(imm)
 							if reg_x != 0:
 								self.regs[reg_x] = val
 						else:
-							val = self.read8(imm, True)
+							val = self.read8(imm)
 							if reg_x != 0:
 								self.regs[reg_x] = (self.regs[reg_x] & 0xFF00) | val
 
@@ -640,10 +625,10 @@ class CPU:
 					# OP3
 					if op & 0x10:
 						# OP3 imm20
-						new_pc = self.fetch16(True) | (reg_x<<16)
+						new_pc = self.fetch16() | (reg_x<<16)
 					else:
 						# OP3 reg imm8
-						new_pc = ((self.fetch8(True)<<12) + self.regs[reg_x]) & 0xFFFFF
+						new_pc = ((self.fetch8()<<12) + self.regs[reg_x]) & 0xFFFFF
 
 					if op2 == 0x0: # JZ
 						if self.flags & F_ZERO:
@@ -684,7 +669,7 @@ class CPU:
 			else:
 				# OP1 reg reg / OP2
 				size = (op & 0x10) != 0
-				op2 = self.fetch8(True)
+				op2 = self.fetch8()
 				reg_x = (op2 & 0x0F)
 				reg_y = (op2 >> 4)
 
@@ -699,9 +684,9 @@ class CPU:
 			op >>= 5
 
 			if size:
-				imm = self.fetch16(True)
+				imm = self.fetch16()
 			else:
-				imm = self.fetch8(True)
+				imm = self.fetch8()
 
 			self.do_op1(size, op, reg_x, imm)
 
@@ -719,7 +704,7 @@ cpu.cold_reset()
 if False:
 	print "filling shadow"
 	for i in xrange(1<<20):
-		cpu.read8(i, False)
+		cpu.read8(i)
 print "running until halt"
 t_start = time.time()
 cpu.run_until_halt()
