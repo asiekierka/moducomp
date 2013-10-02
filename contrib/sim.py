@@ -5,7 +5,7 @@
 import sys, struct, time
 
 SHADOW_ENABLED = True
-#SHADOW_ENABLED = False
+SHADOW_PREFILL = False
 
 TRIG_RECALC = -3
 TRIG_DYNA = -2
@@ -840,7 +840,7 @@ for reps in xrange(1):
 	print
 	print "run #%i" % (reps+1,)
 	cpu.cold_reset()
-	if False:
+	if SHADOW_ENABLED and SHADOW_PREFILL:
 		print "filling shadow"
 		for i in xrange(1<<20):
 			cpu.read8(i)

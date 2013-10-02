@@ -2,7 +2,7 @@
 
 	.org $FE000
 crc_base:
-	.dw $97BF
+	.dw $5BCE
 code_start:
 	; Clear interrupts
 	cli
@@ -13,15 +13,16 @@ code_start:
 		; Write RAM to $00000
 		st.b $00000, @2, @2
 		add.b @2, #1
-		cmp.b @2, #$00
+		cmp.b @2, #$80
 		jnz lp_ckram1
+		move.b @2, #$00
 	lp_ckram2:
 		; Read RAM from $F0000 and compare (1. we need this alias, and 2. we don't want any "cache" to screw us over should we ever add one)
 		ld.b @1, $F0000, @2
 		cmp.b @1, @2
 		jnz lpf_ckram
 		add.b @2, #1
-		cmp.b @2, #$00
+		cmp.b @2, #$80
 		jnz lp_ckram2
 		jmp lpx_ckram_ok
 	lpf_ckram:
@@ -33,7 +34,7 @@ code_start:
 	lpx_ckram_ok:
 
 	; Set stack pointer
-	move.w @15, #$0100
+	move.w @15, #$0080
 
 	; Set up our interrupt vector.
 	move.w @1, #int_vec
