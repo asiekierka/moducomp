@@ -47,6 +47,15 @@ public class TileEntityTapeReader extends TileEntityInventory implements IBundle
 			this.worldObj.notifyBlockChange(this.xCoord, this.yCoord, this.zCoord, 2);
 		}
 	}
+	
+	protected void nextByte() {
+		ItemStack stack = this.getStackInSlot(0);
+		if(stack != null && stack.getItem() instanceof ItemPaperTape) {
+			ItemPaperTape tapeHandler = (ItemPaperTape)stack.getItem();
+			tapeHandler.seek(stack, 1);
+			this.worldObj.notifyBlockChange(this.xCoord, this.yCoord, this.zCoord, 2);
+		}		
+	}
 
 	@Override
 	public byte[] getBundledCableStrength(int blockFace, int toDirection) {
