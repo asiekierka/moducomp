@@ -3,11 +3,13 @@
 % Licence: CC0: http://creativecommons.org/publicdomain/zero/1.0/
 %
 % NOTES:
-% - We don't support expressions yet.
+% - Expressions do not follow proper precedence yet (e.g. a-b-c ends up as a-(b-c))
 % - Most of the time, if you get a syntax error, you'll just get an erlang badmatch.
 -module(asm).
 -export([main/0, main/1]).
--record(state, {org=nil, eof=nil, pos=16#00000, labels=nil, mem=nil}).
+-export([parse_asm_string/1, parse_asm_file/1]).
+-export([mem_dump/1]).
+-include("asm.hrl").
 
 -define(IS_LETTER(C), ((C >= $a andalso C =< $z) orelse (C >= $A andalso C =< $Z))).
 -define(IS_DIGIT(C), (C >= $0 andalso C =< $9)).
@@ -81,10 +83,10 @@ optype(X) -> optype(op1(X), op2(X), op3(X), op4(X), ops(X)).
 %
 
 label_add(State, Name) ->
-	false = dict:is_key(Name, State#state.labels),
+	false = dict:is_key(Name, State#asm_state.labels),
 
-	State#state {
-		labels = dict:store(Name, State#state.pos, State#state.labels)
+	State#asm_state {
+		labels = dict:store(Name, State#asm_state.pos, State#asm_state.labels)
 	}.
 
 calc_unop({unop, o_low, V}) -> (V band 16#FF);
@@ -104,8 +106,8 @@ calc_binop({binop, o_or, V1, V2}) -> V1 bor V2.
 
 calc(_State, N, _AtEnd) when is_integer(N) -> N;
 calc(State, {label, Name}, AtEnd) ->
-	case dict:is_key(Name, State#state.labels) of
-		true -> dict:fetch(Name, State#state.labels);
+	case dict:is_key(Name, State#asm_state.labels) of
+		true -> dict:fetch(Name, State#asm_state.labels);
 		false -> case AtEnd of
 			true -> error(lists:flatten(io_lib:format("label ~p undefined~n", [Name])));
 			false -> {label, Name}
@@ -124,6 +126,8 @@ calc(State, {unop, Op, V}, AtEnd) ->
 		true -> calc_unop({unop, Op, N});
 		_ -> {unop, Op, N}
 	end;
+calc(State, {shield, C}, AtEnd) ->
+	calc(State, C, AtEnd);
 calc(State, {calc, C}, AtEnd) ->
 	calc(State, C, AtEnd).
 
@@ -132,9 +136,9 @@ calc(State, {calc, C}, AtEnd) ->
 %
 
 mem_dump(State) ->
-	Org = State#state.org,
-	Eof = State#state.eof,
-	Mem = State#state.mem,
+	Org = State#asm_state.org,
+	Eof = State#asm_state.eof,
+	Mem = State#asm_state.mem,
 
 	Data = lists:reverse(lists:foldl(fun (I, Acc) ->
 		[calc(State, array:get(I, Mem), true)|Acc]
@@ -142,33 +146,33 @@ mem_dump(State) ->
 	{Org, Data}.
 
 % mem_seek(State, Addr) ->
-% 	State#state{pos = Addr}.
+% 	State#asm_state{pos = Addr}.
 
 mem_write(State, []) -> State;
 mem_write(State, [H|T]) ->
-	M1 = case State#state.mem of
+	M1 = case State#asm_state.mem of
 		nil -> array:new([{default, 16#FF}]);
 		Mx -> Mx
 	end,
 
-	P1 = State#state.pos,
+	P1 = State#asm_state.pos,
 	%io:format("write ~p ~p~n", [P1, H]),
 	M2 = array:set(P1, calc(State, H, false), M1),
 	P2 = (P1 + 1),
 
-	O1 = case State#state.org of
+	O1 = case State#asm_state.org of
 		nil -> P1;
-		_ -> State#state.org
+		_ -> State#asm_state.org
 	end,
-	E1 = case State#state.eof of
+	E1 = case State#asm_state.eof of
 		nil -> P2;
-		_ -> case (P2 > State#state.eof) of
+		_ -> case (P2 > State#asm_state.eof) of
 			true -> P2;
-			false -> State#state.eof
+			false -> State#asm_state.eof
 		end
 	end,
 
-	State2 = State#state{
+	State2 = State#asm_state{
 		mem = M2,
 		pos = P2,
 		org = O1,
@@ -234,22 +238,47 @@ tok_int([$-|T]) -> case tok_int(T) of
 	end;
 tok_int([$$|T]) -> tok_int_hex(T, 0);
 tok_int([$%|T]) -> tok_int_bin(T, 0);
-tok_int(L = [C|_]) when ?IS_DIGIT(C) -> tok_int_dec(L, 0);
-tok_int(_) -> error.
+tok_int(L = [C|_]) when ?IS_DIGIT(C) -> tok_int_dec(L, 0).
 
 tok_name([C|T], Acc) when ?IS_LETTER(C) orelse C == $_ orelse ?IS_DIGIT(C) -> tok_name(T, [C|Acc]);
 tok_name(L, Acc) -> {ok, lists:reverse(Acc), L}.
 
-tok_name(L = [C|_]) when ?IS_LETTER(C) orelse C == $_ -> tok_name(L, []);
-tok_name(_) -> error.
+tok_name(L = [C|_]) when ?IS_LETTER(C) orelse C == $_ -> tok_name(L, []).
 
 tok_num_lit(L = [C|_]) when ?IS_LETTER(C) orelse C == $_ ->
 	{ok, Name, L1} = tok_name(L),
 	{ok, {calc, {label, Name}}, L1};
 tok_num_lit(L) -> tok_int(L).
 
-% TODO: expressions
-tok_num(L) -> tok_num_lit(L).
+% TODO: apply a shunting yard rather than use RTL precedence.
+tok_num([$( | T]) ->
+	{ok, Tok, L1} = tok_num(T),
+	[$) | L2] = skip_ws(L1),
+	{ok, {calc, {shield, Tok}}, L2};
+tok_num(L) ->
+	{ok, Tok, L1} = tok_num_lit(L),
+	L2 = skip_ws(L1),
+	case L2 of
+		[Cx|Tx] when Cx == $+; Cx == $-; Cx == $*; Cx == $|; Cx == $&; Cx == $^ ->
+			Op = case Cx of
+				$+ -> o_add;
+				$- -> o_sub;
+				$* -> o_mul;
+				$| -> o_or;
+				$& -> o_and;
+				$^ -> o_xor
+			end,
+			{ok, Tok2, Lx1} = tok_num(skip_ws(Tx)),
+			{ok, {calc, {binop, Op, Tok, Tok2}}, Lx1};
+		[Cx,Cx|Tx] when Cx == $<; Cx == $> ->
+			Op = case Cx of
+				$< -> o_and;
+				$> -> o_xor
+			end,
+			{ok, Tok2, Lx1} = tok_num(skip_ws(Tx)),
+			{ok, {calc, {binop, Op, Tok, Tok2}}, Lx1};
+		_ -> {ok, Tok, L2}
+	end.
 
 tok_reg_inrange(error) -> error;
 tok_reg_inrange(R = {ok, X, _}) when X >= 0 andalso X =< 15 -> R.
@@ -315,9 +344,9 @@ parse_direc("db", L, State) ->
 parse_direc("org", L, State) ->
 	{ok, P, L2} = tok_num(L),
 	parse_end(skip_ws(L2)),
-	State#state{
+	State#asm_state{
 		pos = P,
-		org = case State#state.org of
+		org = case State#asm_state.org of
 			nil -> P;
 			O -> case P < O of
 				true -> P;
@@ -330,10 +359,10 @@ parse_direc("align", L, State) ->
 	{ok, Al, L2} = tok_num(L),
 	parse_end(skip_ws(L2)),
 	ensure_pow2(Al),
-	P = (State#state.pos + Al - 1) band (16#FFFFFFFF bxor (Al - 1)),
-	State#state{
+	P = (State#asm_state.pos + Al - 1) band (16#FFFFFFFF bxor (Al - 1)),
+	State#asm_state{
 		pos = P,
-		org = case State#state.org of
+		org = case State#asm_state.org of
 			nil -> P;
 			O -> case P < O of
 				true -> P;
@@ -464,18 +493,19 @@ parse_op4(Code, [$., S|L1], State) when ?IS_W_B(S) ->
 
 	Size = opsize(S),
 	{RegN1, ImmV, RegN2, L2} = parse_op4_spec(Code, L1, State),
-	Imm = ImmV band 16#FFFFF,
+	% TODO: given a "late" label, allow the assembler user to make assumptions
+	Imm = calc(State, {calc, {binop, o_and, ImmV, 16#FFFFF}}, false),
 
 	S2 = mem_write(State, [
 		2#11101111 + Size*16]),
 	
 	S3 = case {Imm, RegN2} of
-		{_, 0} when Imm >= 16#F0000 andalso Imm =< 16#FFFFF ->
+		{_, 0} when is_integer(Imm) andalso Imm >= 16#F0000 andalso Imm =< 16#FFFFF ->
 			mem_write(S2, [
 				2#00100000 + Code*16 + RegN1,
 				Imm band 16#FF,
 				(Imm bsr 8) band 16#FF]);
-		{_, _} when (Imm band 16#000FF) == 0 ->
+		{_, _} when is_integer(Imm) andalso (Imm band 16#000FF) == 0 ->
 			mem_write(S2, [
 				2#01000000 + Code*16 + RegN1,
 				((Imm bsr 16) band 16#F) + RegN2*16,
@@ -483,9 +513,9 @@ parse_op4(Code, [$., S|L1], State) when ?IS_W_B(S) ->
 		_ ->
 			mem_write(S2, [
 				2#01100000 + Code*16 + RegN1,
-				((Imm bsr 16) band 16#F) + RegN2*16,
-				Imm band 16#FF,
-				(Imm bsr 8) band 16#FF])
+				{calc, {binop, o_add, RegN2*16, {unop, o_top4, Imm}}},
+				{calc, {unop, o_low, Imm}},
+				{calc, {unop, o_high, Imm}}])
 	end,
 	L3 = skip_ws(L2),
 	parse_end(L3),
@@ -536,7 +566,7 @@ parse_asm_line(L, State) ->
 %
 
 open_asm(FName) ->
-	io:format("Reading ~p~n", [FName]),
+	io:format("[asm] Reading ~p~n", [FName]),
 	{ok, L} = file:read_file(FName),
 	binary_to_list(L).
 
@@ -552,14 +582,19 @@ parse_asm(L, State) ->
 	S2 = parse_asm_line(LParse, State),
 	parse_asm(L2, S2).
 
-parse_asm(FName) ->
-	L = open_asm(FName),
-	parse_asm(L, #state{labels=dict:new()}).
+parse_asm_string(Str) ->
+	parse_asm(Str, #asm_state{labels=dict:new()}).
 
-main([FName, OutFName]) ->
-	State = parse_asm(FName),
+parse_asm_file(FName) ->
+	L = open_asm(FName),
+	parse_asm_string(L).
+
+main([Type, FName, OutFName]) when Type == "rom" ->
+	State = parse_asm_file(FName),
 	io:format("Assembly parsed~n"),
-	{Org, Data} = mem_dump(State),
+	{Org, Data} = case Type of
+		"rom" -> mem_dump(State)
+	end,
 	io:format("Memory collected at location ~p, ~p bytes~n", [Org, length(Data)]),
 	file:write_file(OutFName, list_to_binary(Data)).
 

@@ -2,7 +2,7 @@
 
 	.org $FE000
 crc_base:
-	.dw $1C32
+	.dw $97BF
 code_start:
 	; Clear interrupts
 	cli
@@ -101,7 +101,7 @@ start:
 		jnz crc_lp1
 	
 	; check CRC
-	ld.w @2, $FE000 ; labels don't work in ld/st in the assembler yet - FIX THIS
+	ld.w @2, crc_base
 	move.w @13, @1
 	move.w @14, @2
 	xor.w @1, @2
@@ -145,8 +145,8 @@ vec_cli_idle:
 	.dw cli_idle
 	.db $0F
 
-code_end:
 	.org $FFF80
+code_end:
 	.dw $0000 ; version identifier
 	.db "Areia-1 BIOS ROM", $00
 
