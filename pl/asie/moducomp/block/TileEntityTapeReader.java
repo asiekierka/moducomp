@@ -26,6 +26,7 @@ public class TileEntityTapeReader extends TileEntityInventory implements IBundle
 			byte value = tapeHandler.getByte(stack, offset);
 			value |= (byte)1<<shift;
 			tapeHandler.setByte(stack, value, offset);
+			this.worldObj.notifyBlockChange(this.xCoord, this.yCoord, this.zCoord, 2);
 		}
 	}
 	
@@ -43,6 +44,7 @@ public class TileEntityTapeReader extends TileEntityInventory implements IBundle
 		if(stack != null && stack.getItem() instanceof ItemPaperTape) {
 			ItemPaperTape tapeHandler = (ItemPaperTape)stack.getItem();
 			tapeHandler.setPosition(stack, position);
+			this.worldObj.notifyBlockChange(this.xCoord, this.yCoord, this.zCoord, 2);
 		}
 	}
 
