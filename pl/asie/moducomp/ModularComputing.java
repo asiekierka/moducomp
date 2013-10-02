@@ -49,12 +49,7 @@ public class ModularComputing {
     public Block registerBlock(Class<? extends Block> blockClass, String name, int defaultID) {
     	int id = config.getBlock(name, defaultID).getInt();
     	try {
-    		Block block;
-    		if(blockClass.isInstance(BlockMachine.class)) {
-    			block = blockClass.getConstructor(Integer.TYPE, String.class).newInstance(id, name);
-    		} else {
-    			block = blockClass.getConstructor(Integer.TYPE).newInstance(id);
-    		}
+    		Block block = blockClass.getConstructor(Integer.TYPE, String.class).newInstance(id, name);
     		GameRegistry.registerBlock(block, name);
     		if(block instanceof ITileEntityOwner) {
     			ITileEntityOwner teOwner = (ITileEntityOwner)block;
