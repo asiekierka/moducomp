@@ -193,10 +193,10 @@ class StandardMemoryController(Memory):
 			256)
 		
 	def get_shadow_address(self, addr):
-		bank = addr>>16
 		if addr >= 0xF0000 and addr <= 0xFBFFF:
 			# 48KB mirror
-			bank = 0
+			addr &= 0xFFFF
+		bank = addr>>16
 
 		if bank == 0xF:
 			bsel = (addr>>12)&15
@@ -282,13 +282,14 @@ class CPU:
 
 		if addr < 0xFFF80:
 			cyc = self.memctl.write8(self, addr, val)
+			if SHADOW_ENABLED:
+				saddr = self.shadow_addr[addr]
+				if saddr == TRIG_RECALC:
+					saddr = self.shadow_addr[addr] = self.memctl.get_shadow_address(addr)
+				if saddr >= 0:
+					self.shadow_mask[saddr>>5] &= ~(1<<(saddr&31))
 		else:
 			cyc = self.writecfg(addr & 0x7F, val)
-
-		if SHADOW_ENABLED:
-			saddr = self.shadow_addr[addr]
-			if saddr >= 0:
-				self.shadow_mask[saddr>>5] &= ~(1<<(saddr&31))
 
 		self.cycles += cyc+1
 
@@ -303,6 +304,7 @@ class CPU:
 		return val
 
 	def read8(self, addr):
+		saddr = TRIG_DYNA
 		if SHADOW_ENABLED:
 			saddr = self.shadow_addr[addr]
 			if saddr >= 0:
@@ -316,11 +318,12 @@ class CPU:
 		if self.needs_full_reset or addr < 0xFFF80:
 			cyc, val = self.memctl.read8(addr)
 			if SHADOW_ENABLED:
-				saddr = self.memctl.get_shadow_address(addr)
+				saddr = self.shadow_addr[addr]
+				if saddr == TRIG_RECALC:
+					saddr = self.memctl.get_shadow_address(addr)
 		else:
 			cyc, val = self.readcfg(addr & 0x7F)
-			if SHADOW_ENABLED:
-				saddr = self.shadow_count - 128 + (addr & 127)
+			saddr = TRIG_DYNA
 
 		self.cycles += cyc+1
 
@@ -331,8 +334,6 @@ class CPU:
 			if saddr >= 0:
 				self.shadow_cyc[saddr] = cyc
 				self.shadow_data[saddr] = val
-				self.shadow_mask[saddr>>5] |= (1<<(saddr&31))
-			elif saddr == TRIG_OPEN:
 				self.shadow_mask[saddr>>5] |= (1<<(saddr&31))
 
 		return val
@@ -830,13 +831,14 @@ class CPU:
 		while not self.halted:
 			self.do_cycle()
 
+memctl = StandardMemoryController()
+memctl.set_rom(StringROM(8<<10, open("bios.rom", "rb").read()))
+memctl.set_slot(0, RAM(4096))
+memctl.set_sys_slot(DebugSysSlot())
+memctl.shadow_update()
+cpu = CPU(memctl)
+
 for reps in xrange(1):
-	memctl = StandardMemoryController()
-	memctl.set_rom(StringROM(8<<10, open("bios.rom", "rb").read()))
-	memctl.set_slot(0, RAM(4096))
-	memctl.set_sys_slot(DebugSysSlot())
-	memctl.shadow_update()
-	cpu = CPU(memctl)
 	print
 	print "run #%i" % (reps+1,)
 	cpu.cold_reset()
