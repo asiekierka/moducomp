@@ -5,6 +5,7 @@
 import sys, struct, time
 
 SHADOW_ENABLED = True
+#SHADOW_ENABLED = False
 
 TRIG_RECALC = -3
 TRIG_DYNA = -2
@@ -250,6 +251,10 @@ class CPU:
 		self.halted = True
 		self.needs_full_reset = True
 		self.reset_shadow()
+		self.reset_jit()
+	
+	def reset_jit(self):
+		self.jit_closure = [None for i in xrange(1<<20)]
 
 	def reset_shadow(self):
 		self.shadow_count = self.memctl.get_shadow_size() + 128
@@ -387,152 +392,242 @@ class CPU:
 
 	def flag_sign(self, v):
 		self.flag_set(F_SIGN, v != 0)
-
-	def do_op1(self, size, op, reg_x, imm):
-		if size:
-			imm &= 0xFFFF
+	
+	def do_op1(self, size, op, reg_x, imm, imm_is_y):
+		if imm_is_y:
+			if size:
+				def ret_0():
+					return self.regs[imm] & 0xFFFF
+			else:
+				def ret_0():
+					return self.regs[imm] & 0xFF
 		else:
-			imm &= 0xFF
+			if size:
+				def ret_0():
+					return imm & 0xFFFF
+			else:
+				def ret_0():
+					return imm & 0xFF
 
 		assert reg_x != 0
 
 		if op == 0x0:
 			# MOVE
-			if size:
-				self.regs[reg_x] = imm
-			else:
-				self.regs[reg_x] = (self.regs[reg_x] & 0xFF00) | imm
+			def ret(imm):
+				if size:
+					self.regs[reg_x] = imm
+				else:
+					self.regs[reg_x] = (self.regs[reg_x] & 0xFF00) | imm
+
+			return lambda : ret(ret_0())
 		elif op >= 0x1 and op <= 0x3:
-			if size:
-				xval = self.regs[reg_x] & 0xFFFF
-			else:
-				xval = self.regs[reg_x] & 0xFF
+			def ret_1():
+				if size:
+					xval = self.regs[reg_x] & 0xFFFF
+				else:
+					xval = self.regs[reg_x] & 0xFF
+
+				return xval
 
 			# TODO: overflow flag!
 			if op == 0x2:
-				# ADD
-				if size:
-					self.flag_set(F_CARRY, xval + imm >= 0x10000)
-				else:
-					self.flag_set(F_CARRY, xval + imm >= 0x100)
-
-				retval = xval + imm
-
-				if ((xval ^ imm) & 0x8000) == 0:
-					# same signs
-					aimm = (imm if imm < 0x8000 else 0x10000-imm)
-					axval = (xval if xval < 0x8000 else 0x10000-xval)
+				def ret_2(xval, imm):
+					# ADD
 					if size:
-						self.flag_set(F_OVER, aimm + axval >= 0x8000)
+						self.flag_set(F_CARRY, xval + imm >= 0x10000)
 					else:
-						self.flag_set(F_OVER, aimm + axval >= 0x80)
-				else:
-					# differing signs
-					self.flag_set(F_OVER, False)
+						self.flag_set(F_CARRY, xval + imm >= 0x100)
+
+					retval = xval + imm
+
+					if ((xval ^ imm) & 0x8000) == 0:
+						# same signs
+						aimm = (imm if imm < 0x8000 else 0x10000-imm)
+						axval = (xval if xval < 0x8000 else 0x10000-xval)
+						if size:
+							self.flag_set(F_OVER, aimm + axval >= 0x8000)
+						else:
+							self.flag_set(F_OVER, aimm + axval >= 0x80)
+					else:
+						# differing signs
+						self.flag_set(F_OVER, False)
+
+					return retval
 			else:
-				# CMP/SUB
-				self.flag_set(F_CARRY, xval < imm) 
-				retval = xval - imm
+				def ret_2(xval, imm):
+					# CMP/SUB
+					self.flag_set(F_CARRY, xval < imm) 
+					retval = xval - imm
 
-				if ((xval ^ imm) & 0x8000) != 0:
-					# differing signs
-					aimm = (imm if imm < 0x8000 else 0x10000-imm)
-					axval = (xval if xval < 0x8000 else 0x10000-xval)
-					if size:
-						self.flag_set(F_OVER, aimm + axval >= 0x8000)
+					if ((xval ^ imm) & 0x8000) != 0:
+						# differing signs
+						aimm = (imm if imm < 0x8000 else 0x10000-imm)
+						axval = (xval if xval < 0x8000 else 0x10000-xval)
+						if size:
+							self.flag_set(F_OVER, aimm + axval >= 0x8000)
+						else:
+							self.flag_set(F_OVER, aimm + axval >= 0x80)
 					else:
-						self.flag_set(F_OVER, aimm + axval >= 0x80)
-				else:
-					# same signs
-					self.flag_set(F_OVER, False)
+						# same signs
+						self.flag_set(F_OVER, False)
+
+					return retval
 
 			if size:
-				retval &= 0xFFFF
-				if op != 0x1:
-					self.regs[reg_x] = retval
-				self.flag_zero(retval & 0xFFFF)
-				self.flag_sign(retval & 0x8000)
+				def ret_3(retval):
+					retval &= 0xFFFF
+					if op != 0x1:
+						self.regs[reg_x] = retval
+					self.flag_zero(retval & 0xFFFF)
+					self.flag_sign(retval & 0x8000)
 			else:
-				retval &= 0xFF
-				if op != 0x1:
-					self.regs[reg_x] = (self.regs[reg_x] & 0xFF00) | retval
-				self.flag_zero(retval & 0xFF)
-				self.flag_sign(retval & 0x80)
+				def ret_3(retval):
+					retval &= 0xFF
+					if op != 0x1:
+						self.regs[reg_x] = (self.regs[reg_x] & 0xFF00) | retval
+					self.flag_zero(retval & 0xFF)
+					self.flag_sign(retval & 0x80)
+
+			return lambda : ret_3(ret_2(ret_1(), ret_0()))
 		elif op >= 0x4 and op <= 0x6:
 			if op == 0x4:
 				# XOR
-				self.regs[reg_x] ^= imm
+				def ret_1(imm):
+					self.regs[reg_x] ^= imm
 			elif op == 0x5:
 				# OR
-				self.regs[reg_x] |= imm
+				def ret_1(imm):
+					self.regs[reg_x] |= imm
 			elif op == 0x6:
 				# AND
 				if not size:
-					imm |= 0xFF00
-				self.regs[reg_x] &= imm
+					def ret_1(imm):
+						immx = imm | 0xFF00
+						self.regs[reg_x] &= immx
+				else:
+					def ret_1(imm):
+						self.regs[reg_x] &= imm
 
 			if size:
-				self.flag_zero(self.regs[reg_x] & 0xFFFF)
-				self.flag_parity(self.regs[reg_x] & 0xFFFF)
-				self.flag_sign(self.regs[reg_x] & 0x8000)
+				def ret_2(_):
+					self.flag_zero(self.regs[reg_x] & 0xFFFF)
+					self.flag_parity(self.regs[reg_x] & 0xFFFF)
+					self.flag_sign(self.regs[reg_x] & 0x8000)
 			else:
-				self.flag_zero(self.regs[reg_x] & 0xFF)
-				self.flag_parity(self.regs[reg_x] & 0xFFFF)
-				self.flag_sign(self.regs[reg_x] & 0x80)
+				def ret_2(_):
+					self.flag_zero(self.regs[reg_x] & 0xFF)
+					self.flag_parity(self.regs[reg_x] & 0xFFFF)
+					self.flag_sign(self.regs[reg_x] & 0x80)
+
+			return lambda : ret_2(ret_1(ret_0()))
 
 	def do_op2(self, imm_isnt_y, op, reg_x, imm):
 		#print op, reg_x, imm
 		if not imm_isnt_y:
-			imm = self.regs[imm] & 0x0F
-
-		xval = self.regs[reg_x]
+			def ret_0():
+				return self.regs[imm] & 0x0F
+		else:
+			def ret_0():
+				return imm
 
 		if op == 0x0:
 			# ASL/LSL
-			self.flag_set(F_CARRY, (xval & (0x10000>>imm)) != 0)
-			xval = (xval<<imm) & 0xFFFF
+			def ret_1(imm):
+				xval = self.regs[reg_x]
+				self.flag_set(F_CARRY, (xval & (0x10000>>imm)) != 0)
+				xval = (xval<<imm) & 0xFFFF
+				return xval
 		elif op == 0x1 or op == 0x2:
 			# ASR, LSR
-			self.flag_set(F_CARRY, (xval & 0x0001) != 0)
-			if op == 0x1 and (xval & 0x8000) != 0:	
-				xval = ((xval >> imm) | (((1<<imm)-1) << (15-imm))) & 0xFFFF
-			else:
-				xval >>= imm
+			def ret_1(imm):
+				xval = self.regs[reg_x]
+				self.flag_set(F_CARRY, (xval & 0x0001) != 0)
+				if op == 0x1 and (xval & 0x8000) != 0:	
+					xval = ((xval >> imm) | (((1<<imm)-1) << (15-imm))) & 0xFFFF
+				else:
+					xval >>= imm
+				return xval
 		elif op == 0x3:
 			# ROL
-			for i in xrange(imm):
-				rotbit = xval>>15
-				xval = (xval << 1) | (rotbit)
-				self.flag_set(F_CARRY, rotbit != 0)
+			def ret_1(imm):
+				xval = self.regs[reg_x]
+				for i in xrange(imm):
+					rotbit = xval>>15
+					xval = (xval << 1) | (rotbit)
+					self.flag_set(F_CARRY, rotbit != 0)
+				return xval
 		elif op == 0x4:
 			# ROR
-			for i in xrange(imm):
-				rotbit = xval&1
-				xval = (xval >> 1) | (rotbit << 15)
-				self.flag_set(F_CARRY, rotbit != 0)
+			def ret_1(imm):
+				xval = self.regs[reg_x]
+				for i in xrange(imm):
+					rotbit = xval&1
+					xval = (xval >> 1) | (rotbit << 15)
+					self.flag_set(F_CARRY, rotbit != 0)
+				return xval
 		elif op == 0x5:
 			# RCL
-			for i in xrange(imm):
-				rotbit = (1 if (self.flags & F_CARRY) else 0)
-				xval = (xval << 1) | (rotbit)
-				self.flag_set(F_CARRY, rotbit != 0)
+			def ret_1(imm):
+				xval = self.regs[reg_x]
+				for i in xrange(imm):
+					rotbit = (1 if (self.flags & F_CARRY) else 0)
+					xval = (xval << 1) | (rotbit)
+					self.flag_set(F_CARRY, rotbit != 0)
+				return xval
 		elif op == 0x6:
 			# RCR
-			for i in xrange(imm):
-				rotbit = (1 if (self.flags & F_CARRY) else 0)
-				xval = (xval >> 1) | (rotbit << 15)
-				self.flag_set(F_CARRY, rotbit != 0)
+			def ret_1(imm):
+				xval = self.regs[reg_x]
+				for i in xrange(imm):
+					rotbit = (1 if (self.flags & F_CARRY) else 0)
+					xval = (xval >> 1) | (rotbit << 15)
+					self.flag_set(F_CARRY, rotbit != 0)
+				return xval
 		else:
 			assert False
 
-		self.flag_zero(xval)
-		self.flag_sign(xval)
-		self.regs[reg_x] = xval
+		def ret_2(xval):
+			self.flag_zero(xval)
+			self.flag_parity(xval)
+			self.flag_sign(xval)
+			self.regs[reg_x] = xval
 
+		return lambda : ret_2(ret_1(ret_0()))
+	
 	def do_cycle(self):
 		if self.halted:
 			self.cycles += 1
 			return
+
+		jc = self.jit_closure[self.pc]
+		if jc != None:
+			size, cycles, exit_pc, f = jc
+
+			# check region for modifications
+			# TODO! (for now, let's just assume there's no self-modifying code)
+			
+			self.pc += size
+			self.cycles += cycles
+
+			f()
+		else:
+			self.make_closure_and_run_it()
+	
+	def make_closure_and_run_it(self):
+		pc = self.pc
+		val = self.read8(self.pc)
+		ocyc = self.cycles
+		op = self.parse_cycle()
+		ncyc = self.cycles
+		npc = self.pc
+		op()
+		xpc = self.pc
+		self.jit_closure[pc] = (npc - pc, ncyc - ocyc, xpc, op)
+
+	def parse_cycle(self):
+		if self.halted:
+			self.cycles += 1
+			return lambda : None
 
 		op = self.fetch8()
 
@@ -543,33 +638,42 @@ class CPU:
 			op >>= 4
 			if op == 0x00:
 				# NOP
-				pass
+				def ret():
+					pass
 			elif op == 0x02:
 				# RET
-				pc_low = self.read16(self.regs[15] | 0xF0000)
-				self.regs[15] += 2
-				pc_high = self.read8(self.regs[15] | 0xF0000)
-				self.regs[15] += 1
-				self.pc = (pc_low | (pc_high << 16)) & 0xFFFFF
+				def ret():
+					pc_low = self.read16(self.regs[15] | 0xF0000)
+					self.regs[15] += 2
+					pc_high = self.read8(self.regs[15] | 0xF0000)
+					self.regs[15] += 1
+					self.pc = (pc_low | (pc_high << 16)) & 0xFFFFF
 			elif op == 0x04:
 				# POPF
-				self.flags = self.read16(self.regs[15] | 0xF0000)
-				self.regs[15] += 2
+				def ret():
+					self.flags = self.read16(self.regs[15] | 0xF0000)
+					self.regs[15] += 2
 			elif op == 0x06:
 				# PUSHF
-				self.regs[15] -= 2
-				self.write16(self.regs[15] | 0xF0000, self.flags)
+				def ret():
+					self.regs[15] -= 2
+					self.write16(self.regs[15] | 0xF0000, self.flags)
 			elif op == 0x08:
 				# CLI
-				self.flags &= ~F_INT
+				def ret():
+					self.flags &= ~F_INT
 			elif op == 0x0A:
 				# SEI
-				self.flags |= F_INT
+				def ret():
+					self.flags |= F_INT
 			elif op == 0x0C:
 				# HLT
-				self.halted = True
+				def ret():
+					self.halted = True
 			else:
 				assert False
+
+			return ret
 
 		elif (op & 0xE0) == 0xE0:
 			subop = op & 7
@@ -584,6 +688,7 @@ class CPU:
 					is_store = (op2 & 1) != 0
 					size = (op & 0x10)
 					op2 >>= 1
+					reg_y_data = 0
 					if op2 == 1:
 						# $Faaaa
 						imm = 0xF0000 + self.fetch16()
@@ -593,79 +698,110 @@ class CPU:
 						reg_y = (op_yb>>4)
 						op_yb &= 0x0F
 
-						imm = (op_yb<<16) + (self.fetch8()<<8) + self.regs[reg_y]
+						reg_y_data = reg_y
+						imm = (op_yb<<16) + (self.fetch8()<<8)
 					elif op2 == 3:
 						# $baaaa, @y
 						op_yb = self.fetch8()
 						reg_y = (op_yb>>4)
 						op_yb &= 0x0F
 
-						imm = (op_yb<<16) + self.fetch16() + self.regs[reg_y]
+						reg_y_data = reg_y
+						imm = (op_yb<<16) + self.fetch16()
 					else:
 						assert False
 
 					if is_store:
 						# ST
 						if size:
-							self.write16(imm, self.regs[reg_x])
+							def ret():
+								self.write16(imm + self.regs[reg_y_data], self.regs[reg_x])
 						else:
-							self.write8(imm, self.regs[reg_x] & 0xFF)
+							def ret():
+								self.write8(imm + self.regs[reg_y_data], self.regs[reg_x] & 0xFF)
 					else:
 						# LD
 						if size:
-							val = self.read16(imm)
 							if reg_x != 0:
-								self.regs[reg_x] = val
+								def ret():
+									val = self.read16(imm + self.regs[reg_y_data])
+									self.regs[reg_x] = val
+							else:
+								def ret():
+									val = self.read16(imm + self.regs[reg_y_data])
 						else:
-							val = self.read8(imm)
 							if reg_x != 0:
-								self.regs[reg_x] = (self.regs[reg_x] & 0xFF00) | val
+								def ret():
+									val = self.read8(imm + self.regs[reg_y_data])
+									self.regs[reg_x] = (self.regs[reg_x] & 0xFF00) | val
+							else:
+								def ret():
+									val = self.read8(imm + self.regs[reg_y_data])
+
+					return ret
 
 				else:
 					# OP3
+					new_reg_x = 0
 					if op & 0x10:
 						# OP3 imm20
 						new_pc = self.fetch16() | (reg_x<<16)
 					else:
 						# OP3 reg imm8
-						new_pc = ((self.fetch8()<<12) + self.regs[reg_x]) & 0xFFFFF
+						new_pc = (self.fetch8()<<12)
+						new_reg_x = reg_x
+
+					def ret_1():
+						return (new_pc + self.regs[new_reg_x]) & 0xFFFFF
 
 					if op2 == 0x0: # JZ
-						if self.flags & F_ZERO:
-							self.pc = new_pc
+						def ret_2(new_pc):
+							if self.flags & F_ZERO:
+								self.pc = new_pc
 					elif op2 == 0x1: # JNZ
-						if not (self.flags & F_ZERO):
-							self.pc = new_pc
+						def ret_2(new_pc):
+							if not (self.flags & F_ZERO):
+								self.pc = new_pc
 					elif op2 == 0x2: # JC
-						if self.flags & F_CARRY:
-							self.pc = new_pc
+						def ret_2(new_pc):
+							if self.flags & F_CARRY:
+								self.pc = new_pc
 					elif op2 == 0x3: # JNC
-						if not (self.flags & F_CARRY):
-							self.pc = new_pc
+						def ret_2(new_pc):
+							if not (self.flags & F_CARRY):
+								self.pc = new_pc
 					elif op2 == 0x4: # JV
-						if self.flags & F_OVER:
-							self.pc = new_pc
+						def ret_2(new_pc):
+							if self.flags & F_OVER:
+								self.pc = new_pc
 					elif op2 == 0x5: # JNV
-						if not (self.flags & F_OVER):
-							self.pc = new_pc
+						def ret_2(new_pc):
+							if not (self.flags & F_OVER):
+								self.pc = new_pc
 					elif op2 == 0x6: # JS
-						if self.flags & F_SIGN:
-							self.pc = new_pc
+						def ret_2(new_pc):
+							if self.flags & F_SIGN:
+								self.pc = new_pc
 					elif op2 == 0x7: # JNS
-						if not (self.flags & F_SIGN):
-							self.pc = new_pc
+						def ret_2(new_pc):
+							if not (self.flags & F_SIGN):
+								self.pc = new_pc
 					elif op2 == 0x8: # JMP
-						self.pc = new_pc
+						def ret_2(new_pc):
+							self.pc = new_pc
 					elif op2 == 0x9: # JSR
-						pc_low = self.pc & 0xFFFF
-						pc_high = (self.pc >> 16) & 0x0F
-						self.regs[15] -= 1
-						self.write8(self.regs[15] | 0xF0000, pc_high)
-						self.regs[15] -= 2
-						self.write16(self.regs[15] | 0xF0000, pc_low)
-						self.pc = new_pc
+						def ret_2(new_pc):
+							pc_low = self.pc & 0xFFFF
+							pc_high = (self.pc >> 16) & 0x0F
+							self.regs[15] -= 1
+							self.write8(self.regs[15] | 0xF0000, pc_high)
+							self.regs[15] -= 2
+							self.write16(self.regs[15] | 0xF0000, pc_low)
+							self.pc = new_pc
 					else:
 						assert False
+
+					return lambda : ret_2(ret_1())
 			else:
 				# OP1 reg reg / OP2
 				size = (op & 0x10) != 0
@@ -674,9 +810,9 @@ class CPU:
 				reg_y = (op2 >> 4)
 
 				if op & 0x08:
-					self.do_op2(size, subop, reg_x, reg_y)
+					return self.do_op2(size, subop, reg_x, reg_y)
 				else:
-					self.do_op1(size, subop, reg_x, self.regs[reg_y])
+					return self.do_op1(size, subop, reg_x, reg_y, True)
 		else:
 			# OP1
 			size = (op & 0x10) != 0
@@ -688,28 +824,35 @@ class CPU:
 			else:
 				imm = self.fetch8()
 
-			self.do_op1(size, op, reg_x, imm)
+			return self.do_op1(size, op, reg_x, imm, False)
 
 	def run_until_halt(self):
 		while not self.halted:
 			self.do_cycle()
 
-memctl = StandardMemoryController()
-memctl.set_rom(StringROM(8<<10, open("bios.rom", "rb").read()))
-memctl.set_slot(0, RAM(4096))
-memctl.set_sys_slot(DebugSysSlot())
-memctl.shadow_update()
-cpu = CPU(memctl)
-cpu.cold_reset()
-if False:
-	print "filling shadow"
-	for i in xrange(1<<20):
-		cpu.read8(i)
-print "running until halt"
-t_start = time.time()
-cpu.run_until_halt()
-t_end = time.time()
-print "HALT: %05X: " % (cpu.pc-1)
-print " ".join("%04X" % v for v in cpu.regs)
-print "time taken: %f seconds" % (t_end - t_start,)
+for reps in xrange(1):
+	memctl = StandardMemoryController()
+	memctl.set_rom(StringROM(8<<10, open("bios.rom", "rb").read()))
+	memctl.set_slot(0, RAM(4096))
+	memctl.set_sys_slot(DebugSysSlot())
+	memctl.shadow_update()
+	cpu = CPU(memctl)
+	print
+	print "run #%i" % (reps+1,)
+	cpu.cold_reset()
+	if False:
+		print "filling shadow"
+		for i in xrange(1<<20):
+			cpu.read8(i)
+	print "running until halt"
+	t_start = time.time()
+	cpu.cycles = 0
+	cpu.run_until_halt()
+	t_end = time.time()
+	print "HALT: %05X: " % (cpu.pc-1,)
+	print " ".join("%04X" % v for v in cpu.regs)
+	t = t_end - t_start
+	print "time taken: %f seconds" % (t,)
+	print "cycles: %i" % (cpu.cycles)
+	print "rate: %.6f MHz" % (cpu.cycles / (t * 10**6))
 
