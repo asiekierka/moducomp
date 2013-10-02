@@ -6,6 +6,7 @@ import pl.asie.moducomp.ModularComputing;
 import pl.asie.moducomp.lib.Helper;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import mods.immibis.redlogic.api.wiring.IBundledEmitter;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockContainer;
 import net.minecraft.block.material.Material;

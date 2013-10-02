@@ -10,7 +10,6 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
 public abstract class BlockMachine extends BlockContainer {
-
     public BlockMachine(int id, String name) 
     {
             super(id, Material.circuits);

@@ -4,12 +4,13 @@ import java.awt.Container;
 
 import pl.asie.moducomp.item.ItemPaperTape;
 import pl.asie.moducomp.lib.TileEntityInventory;
+import mods.immibis.redlogic.api.wiring.IBundledEmitter;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
-public class TileEntityTapeReader extends TileEntityInventory {
+public class TileEntityTapeReader extends TileEntityInventory implements IBundledEmitter {
 	public TileEntityTapeReader() {
 		super(1, 1, "block.moducomp.tape_reader");
 	}
@@ -40,5 +41,19 @@ public class TileEntityTapeReader extends TileEntityInventory {
 			ItemPaperTape tapeHandler = (ItemPaperTape)stack.getItem();
 			tapeHandler.setPosition(stack, position);
 		}
+	}
+
+	@Override
+	public byte[] getBundledCableStrength(int blockFace, int toDirection) {
+		ItemStack stack = this.getStackInSlot(0);
+		if(stack != null && stack.getItem() instanceof ItemPaperTape) {
+			ItemPaperTape tapeHandler = (ItemPaperTape)stack.getItem();
+			byte[] data = new byte[16];
+			int realValue = 0xFF & tapeHandler.getByte(stack, 0);
+			for(int i = 0; i < 8; i++) {
+				data[i] = (realValue & (1<<i)) > 0 ? (byte)255 : (byte)0;
+			}
+			return data;
+		} else return null;
 	}
 }
