@@ -16,7 +16,7 @@ public abstract class BlockMachine extends BlockContainer {
     		this.setHardness(4.5F);
     		this.setUnlocalizedName(name);
     		this.setCreativeTab(CreativeTabs.tabRedstone);
-    		this.setBlockBounds(0.0F, 0.0F, 0.0F, 1.0F, 0.875F, 1.0F);
+    		this.setBlockBounds(0.0F, 0.0F, 0.0F, 1.0F, 1.0F, 1.0F);
     }
     
     public boolean isOpaqueCube() { return false; }

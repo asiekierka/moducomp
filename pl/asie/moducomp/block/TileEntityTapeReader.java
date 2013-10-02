@@ -5,12 +5,15 @@ import java.awt.Container;
 import pl.asie.moducomp.item.ItemPaperTape;
 import pl.asie.moducomp.lib.TileEntityInventory;
 import mods.immibis.redlogic.api.wiring.IBundledEmitter;
+import mods.immibis.redlogic.api.wiring.IBundledWire;
+import mods.immibis.redlogic.api.wiring.IConnectable;
+import mods.immibis.redlogic.api.wiring.IWire;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
-public class TileEntityTapeReader extends TileEntityInventory implements IBundledEmitter {
+public class TileEntityTapeReader extends TileEntityInventory implements IBundledEmitter, IConnectable {
 	public TileEntityTapeReader() {
 		super(1, 1, "block.moducomp.tape_reader");
 	}
@@ -55,5 +58,16 @@ public class TileEntityTapeReader extends TileEntityInventory implements IBundle
 			}
 			return data;
 		} else return null;
+	}
+
+	@Override
+	public boolean connects(IWire wire, int blockFace, int fromDirection) {
+		return (wire instanceof IBundledWire);
+	}
+
+	@Override
+	public boolean connectsAroundCorner(IWire wire, int blockFace,
+			int fromDirection) {
+		return false;
 	}
 }
