@@ -2,10 +2,13 @@
 # by Ben "GreaseMonkey" Russell, 2013
 # Licence: CC0: http://creativecommons.org/publicdomain/zero/1.0/
 
-import sys, struct
+import sys, struct, time
 
-SHADOW_ENABLED = True # TODO: fix mirroring when shadow is enabled
+SHADOW_ENABLED = True
 
+TRIG_RECALC = -3
+TRIG_DYNA = -2
+TRIG_OPEN = -1
 TRIG_FAIL = None
 
 F_ZERO = 0x0001
@@ -34,6 +37,12 @@ def log2(v):
 	return v
 
 class Memory:
+	def get_shadow_size(self):
+		return 0
+	
+	def get_shadow_address(self, addr):
+		return TRIG_DYNA
+	
 	def read8(self, addr, trigger):
 		return 0, 0xFF
 
@@ -52,6 +61,15 @@ class StringROM(Memory):
 		self.confspace = "\xDF\x99\x00\xFF" + chr(0x00 + log2(size)) + "\xFF"*3
 		assert ispowerof2(len(self.confspace))
 
+	def get_shadow_size(self):
+		return self.size + 256
+
+	def get_shadow_address(self, addr):
+		if addr & 0x200000:
+			return self.size + (addr&255)
+		else:
+			return addr & (self.size-1)
+	
 	def read8(self, addr, trigger):
 		if addr & 0x200000:
 			return 0, ord(self.confspace[addr & (len(self.confspace)-1)])
@@ -67,6 +85,15 @@ class RAM(Memory):
 		self.data = [0xFF for i in xrange(size)]
 		self.confspace = "\xDF\x99\x00\xFF" + chr(0x10 + log2(size)) + "\xFF"*3
 		assert ispowerof2(len(self.confspace))
+
+	def get_shadow_size(self):
+		return self.size + 256
+	
+	def get_shadow_address(self, addr):
+		if addr & 0x200000:
+			return self.size + (addr&255)
+		else:
+			return addr & (self.size-1)
 
 	def read8(self, addr, trigger):
 		if addr & 0x200000:
@@ -101,17 +128,34 @@ class DebugSysSlot(Memory):
 class StandardMemoryController(Memory):
 	def __init__(self):
 		self.slots = [None for i in xrange(15)]
+		self.saddr_slots = [0 for i in xrange(15)]
+		self.saddr_rom = 0
+		self.saddr_sys = 0
 		self.rom = None
 		self.sys_slot = None
+	
+	def shadow_update(self):
+		offs = 0
+		for i in xrange(15):
+			self.saddr_slots[i] = offs
+			if self.slots[i] != None:
+				offs += self.slots[i].get_shadow_size()
+		self.saddr_rom = offs
+		if self.rom != None:
+			offs += self.rom.get_shadow_size()
+		self.saddr_sys = offs
 
 	def set_slot(self, bank, slot):
 		self.slots[bank] = slot
+		self.shadow_update()
 
 	def set_rom(self, rom):
 		self.rom = rom
+		self.shadow_update()
 
 	def set_sys_slot(self, slot):
 		self.sys_slot = slot
+		self.shadow_update()
 
 	def route(self, addr, fn, *args):
 		addr &= 0xFFFFF
@@ -143,6 +187,47 @@ class StandardMemoryController(Memory):
 
 		return fn(slot, addr, *args)
 
+	def get_shadow_size(self):
+		return (sum(o.get_shadow_size() if o != None else 0 for o in self.slots) + 
+			(self.rom.get_shadow_size() if self.rom != None else 0) +
+			256)
+		
+	def get_shadow_address(self, addr):
+		bank = addr>>16
+		if addr >= 0xF0000 and addr <= 0xFBFFF:
+			# 48KB mirror
+			bank = 0
+
+		if bank == 0xF:
+			bsel = (addr>>12)&15
+			if bsel == 0xC:
+				return TRIG_OPEN
+			elif bsel == 0xD:
+				subbank = (addr>>8)&15
+				if subbank == 0xF:
+					if self.sys_slot == None:
+						return TRIG_OPEN
+					else:
+						offs = self.saddr_sys
+						return offs + self.sys_slot.get_shadow_address((addr & 0xFF) | 0x200000)
+				elif self.slots[subbank] == None:
+					return TRIG_OPEN
+				else:
+					offs = self.saddr_slots[subbank]
+					return offs + self.slots[subbank].get_shadow_address((addr & 0xFF) | 0x200000)
+			elif self.rom == None:
+				return TRIG_OPEN
+			else:
+				assert bsel >= 0xE and bsel <= 0xF
+				offs = self.saddr_rom
+				#print offs, self.rom.get_shadow_size()
+				return offs + self.rom.get_shadow_address((addr & 0x1FFF))
+		elif self.slots[bank] == None:
+			return TRIG_OPEN
+		else:
+			offs = self.saddr_slots[bank]
+			return offs + self.slots[bank].get_shadow_address(addr & 0xFFFF)
+
 	def read8(self, addr, trigger):
 		return self.route(addr, lambda slot, addr, trigger: slot.read8(addr, trigger) if slot != None else (0, 0xFF), trigger)
 
@@ -151,8 +236,8 @@ class StandardMemoryController(Memory):
 
 class CPU:
 	def __init__(self, memctl):
-		self.reset_shadow()
 		self.memctl = memctl
+		self.reset_shadow()
 		self.regs = [0 for i in xrange(16)]
 		self.cfg = [0 for i in xrange(128)]
 		self.cycles = 0
@@ -163,12 +248,17 @@ class CPU:
 		self.reset_shadow()
 
 	def reset_shadow(self):
-		self.shadow_data = [0 for i in xrange(1<<20)]
-		self.shadow_mask = [0 for i in xrange(1<<(20-5))]
-		self.shadow_cyc = [0 for i in xrange(1<<20)]
+		self.shadow_count = self.memctl.get_shadow_size() + 128
+		self.shadow_addr = [TRIG_RECALC for i in xrange(1<<20)] # int
+		self.shadow_data = [0 for i in xrange(self.shadow_count)] # unsigned byte
+		self.shadow_mask = [0 for i in xrange((self.shadow_count+31)>>5)] # int bitmask
+		self.shadow_cyc = [0 for i in xrange(self.shadow_count)] # int?
+		print "shadow reset, %i bytes" % (self.shadow_count)
 
 	def deshadow(self, addr):
-		self.shadow_mask[addr>>5] &= ~(1<<(addr&31))
+		saddr = self.shadow_addr[addr]
+		if saddr >= 0:
+			self.shadow_mask[saddr>>5] &= ~(1<<(saddr&31))
 
 	def readcfg(self, addr, trigger):
 		return 0, self.cfg[addr & 0x7F]
@@ -186,8 +276,10 @@ class CPU:
 		else:
 			cyc = self.writecfg(addr & 0x7F, val)
 
-		if val != self.shadow_data[addr]:
-			self.shadow_mask[addr>>5] &= ~(1<<(addr&31))
+		if SHADOW_ENABLED:
+			saddr = self.shadow_addr[addr]
+			if saddr >= 0:
+				self.shadow_mask[saddr>>5] &= ~(1<<(saddr&31))
 
 		self.cycles += cyc+1
 
@@ -213,14 +305,25 @@ class CPU:
 				v = self.read8(addr, False)
 				if v != TRIG_FAIL:
 					return v
-			elif (self.shadow_mask[addr>>5] & (1<<(addr&31))) != 0:
-				self.cycles += self.shadow_cyc[addr]+1
-				return self.shadow_data[addr]
+			else:
+				saddr = self.shadow_addr[addr]
+				if saddr >= 0:
+					if (self.shadow_mask[saddr>>5] & (1<<(saddr&31))) != 0:
+						self.cycles += self.shadow_cyc[saddr]+1
+						return self.shadow_data[saddr]
+				elif saddr == TRIG_OPEN:
+					self.cycles += 1
+					return 0xFF
 
+		saddr = TRIG_DYNA
 		if self.needs_full_reset or addr < 0xFFF80:
 			cyc, val = self.memctl.read8(addr, trigger)
+			if SHADOW_ENABLED:
+				saddr = self.memctl.get_shadow_address(addr)
 		else:
 			cyc, val = self.readcfg(addr & 0x7F, trigger)
+			if SHADOW_ENABLED:
+				saddr = self.shadow_count - 128 + (addr & 127)
 
 		if val == TRIG_FAIL:
 			return TRIG_FAIL
@@ -230,9 +333,13 @@ class CPU:
 		assert (val&~0xFF) == 0
 
 		if SHADOW_ENABLED and not trigger:
-			self.shadow_cyc[addr] = cyc
-			self.shadow_data[addr] = val
-			self.shadow_mask[addr>>5] |= (1<<(addr&31))
+			self.shadow_addr[addr] = saddr
+			if saddr >= 0:
+				self.shadow_cyc[saddr] = cyc
+				self.shadow_data[saddr] = val
+				self.shadow_mask[saddr>>5] |= (1<<(saddr&31))
+			elif saddr == TRIG_OPEN:
+				self.shadow_mask[saddr>>5] |= (1<<(saddr&31))
 
 		return val
 
@@ -606,15 +713,18 @@ memctl = StandardMemoryController()
 memctl.set_rom(StringROM(8<<10, open("bios.rom", "rb").read()))
 memctl.set_slot(0, RAM(4096))
 memctl.set_sys_slot(DebugSysSlot())
+memctl.shadow_update()
 cpu = CPU(memctl)
 cpu.cold_reset()
 if False:
-	# mirroring is currently broken, so DON'T FILL THE SHADOW
 	print "filling shadow"
 	for i in xrange(1<<20):
 		cpu.read8(i, False)
 print "running until halt"
+t_start = time.time()
 cpu.run_until_halt()
+t_end = time.time()
 print "HALT: %05X: " % (cpu.pc-1)
 print " ".join("%04X" % v for v in cpu.regs)
+print "time taken: %f seconds" % (t_end - t_start,)
 
