@@ -12,6 +12,7 @@ import pl.asie.moducomp.block.TileEntityTapeReader;
 import pl.asie.moducomp.integration.IntegrationOpenPeripheral;
 import pl.asie.moducomp.integration.ModIntegration;
 import pl.asie.moducomp.item.ItemPaperTape;
+import pl.asie.moducomp.item.ItemRAM;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.item.Item;
@@ -35,6 +36,7 @@ public class ModularComputing {
 	public BlockMusicBox blockMusicBox;
 	public BlockRAMBoard blockRAMBoard;
 	public ItemPaperTape itemPaperTape;
+	public ItemRAM itemRAM;
 	
 	private Configuration config;
 	
@@ -61,7 +63,7 @@ public class ModularComputing {
     
     public Item registerItem(Class<? extends Item> itemClass, String name, int defaultID) {
     	try {
-    		Item item = itemClass.getConstructor(Integer.TYPE).newInstance(config.getItem(name, defaultID).getInt());
+    		Item item = itemClass.getConstructor(Integer.TYPE, String.class).newInstance(config.getItem(name, defaultID).getInt(), name);
     		GameRegistry.registerItem(item, name);
     		return item;
     	} catch(Exception e) { e.printStackTrace(); return null; }
@@ -80,7 +82,8 @@ public class ModularComputing {
     	blockRAMBoard = (BlockRAMBoard) registerBlock(BlockRAMBoard.class, "moducomp.ram_board", 1922);
     	
     	itemPaperTape = (ItemPaperTape) registerItem(ItemPaperTape.class, "moducomp.paper_tape", 19200);
-
+    	itemRAM = (ItemRAM) registerItem(ItemRAM.class, "moducomp.ram", 19201);
+    	
     	config.save();
     	proxy.setupEvents();
     }

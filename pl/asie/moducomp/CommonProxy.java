@@ -8,6 +8,7 @@ public class CommonProxy {
 		lr.addStringLocalization("tile.moducomp.tape_reader.name", "Tape Reader");
 		lr.addStringLocalization("tile.moducomp.music_box.name", "Music Box");
 		lr.addStringLocalization("item.moducomp.paper_tape.name", "Paper Tape");
+		lr.addStringLocalization("item.moducomp.ram.name", "Random Access Memory");
 	}
 	
 	public void setupEvents() { }

@@ -14,9 +14,9 @@ import net.minecraft.nbt.NBTTagCompound;
 public class ItemPaperTape extends Item implements IItemTape {
 	public static final int MAX_TAPE_LENGTH = (65536/32);
 	
-	public ItemPaperTape(int id) {
+	public ItemPaperTape(int id, String name) {
 		super(id);
-		this.setUnlocalizedName("moducomp.paper_tape");
+		this.setUnlocalizedName(name);
 		this.setTextureName("moducomp:paper_tape");
    		this.setCreativeTab(CreativeTabs.tabRedstone);
 	}
