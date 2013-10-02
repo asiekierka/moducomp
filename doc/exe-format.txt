@@ -1,0 +1,38 @@
+Executable format specification
+
+Header:
+	.db "ARX" ; magic
+	.db 1 ; version
+	.dw entry_point
+	.dw stack_pointer
+	.db stack_pointer_top
+	.dw extra_ram_needed
+	.db extra_ram_needed_top
+
+Import Jump Table:
+	for each library:
+		.db "library_name", 0
+		for each import:
+			import_name: .db "import_name", 0 ; main string must be padded at the end with spaces if the string itself is less than 3 bytes (not including the terminator)
+		.db 0
+	.db 0
+
+Main Data:
+	.dw main_size-1
+	main_size bytes follow.
+
+Relocation Table:
+	for each low-byte reloc:
+		.dw reloc_point
+	.dw $FFFF
+	for each high-byte reloc:
+		.dw reloc_point
+	.dw $FFFF
+	for each top-nybble reloc:
+		.dw reloc_point
+	.dw $FFFF
+
+End of executable marker:
+	.db "END", 0
+
+
