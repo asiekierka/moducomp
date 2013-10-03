@@ -522,9 +522,9 @@ class CPU:
 
 			return lambda : ret_2(ret_1(ret_0()))
 
-	def do_op2(self, imm_isnt_y, op, reg_x, imm):
+	def do_op2(self, imm_is_y, op, reg_x, imm):
 		#print op, reg_x, imm
-		if not imm_isnt_y:
+		if imm_is_y:
 			def ret_0():
 				return self.regs[imm] & 0x0F
 		else:
@@ -542,7 +542,7 @@ class CPU:
 			# ASR, LSR
 			def ret_1(imm):
 				xval = self.regs[reg_x]
-				self.flag_set(F_CARRY, (xval & 0x0001) != 0)
+				self.flag_set(F_CARRY, (xval & ((1<<imm)>>1)) != 0)
 				if op == 0x1 and (xval & 0x8000) != 0:	
 					xval = ((xval >> imm) | (((1<<imm)-1) << (15-imm))) & 0xFFFF
 				else:

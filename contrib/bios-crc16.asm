@@ -2,7 +2,7 @@
 
 	.org $FE000
 crc_base:
-	.dw $5BCE
+	.dw $8602
 code_start:
 	; Clear interrupts
 	cli

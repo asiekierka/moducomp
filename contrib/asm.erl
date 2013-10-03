@@ -410,14 +410,14 @@ parse_op2(Code, [$., S|L1], State) when S == $w orelse S == $W ->
 		Lx1 = [$@ | _] ->
 			{ok, RegN2, Lx2} = tok_reg(Lx1),
 			Sx1 = mem_write(State, [
-				2#11101000 + Code,
+				2#11111000 + Code,
 				RegN1 + RegN2*16]),
 			{Lx2, Sx1};
 		[$# | Lx1] ->
 			{ok, Imm, Lx2} = tok_num(Lx1),
 			true = (Imm >= 0 andalso Imm =< 15),
 			Sx1 = mem_write(State, [
-				2#11111000 + Code,
+				2#11101000 + Code,
 				RegN1 + Imm*16]),
 			{Lx2, Sx1}
 	end,

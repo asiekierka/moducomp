@@ -196,6 +196,7 @@ public class CPU
 					rop = ((ex1 & 1) == 0 ? UOP_LD : UOP_ST);
 					int meep = 0;
 					ry = 0;
+					rsize = (op & 0x10) != 0 ? 2 : 1;
 					switch(ex1>>1)
 					{
 						case 1:
@@ -417,7 +418,7 @@ public class CPU
 				return (short)ret;
 			} //break;
 			case UOP_ASL: {
-				int vx = this.regs[rx];
+				int vx = 0xFFFF & (int)this.regs[rx];
 				int vy = (ry == 0 ? imm : this.regs[ry]) & 0xF;
 				int ret = vx << vy;
 				this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
@@ -427,7 +428,7 @@ public class CPU
 				return (short)ret;
 			} //break;
 			case UOP_ASR: {
-				int vx = 0xFFFF & (int)this.regs[rx];
+				int vx = this.regs[rx];
 				int vy = (ry == 0 ? imm : this.regs[ry]) & 0xF;
 				int ret = vx >> vy;
 				int retpre = (vy == 0 ? vx << 1 : vx >> (vy-1));
@@ -438,8 +439,8 @@ public class CPU
 				return (short)ret;
 			} //break;
 			case UOP_LSR: {
-				int vx = this.regs[rx];
-				int vy = (size == 2 ? ry : this.regs[ry]) & 0xF;
+				int vx = 0xFFFF & (int)this.regs[rx];
+				int vy = (ry == 0 ? imm : this.regs[ry]) & 0xF;
 				int ret = vx >>> vy;
 				int retpre = (vy == 0 ? vx << 1 : vx >>> (vy-1));
 				this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
@@ -516,6 +517,7 @@ public class CPU
 					if((op & 0x20) == 0)
 					{
 						// LD
+						//System.out.printf("%05X %d\n", this.pc, size);
 						//System.out.printf("LD %05X\n", offs);
 						if(size == 2)
 							return this.read16(offs);
@@ -548,9 +550,6 @@ public class CPU
 		short ret = doUOPStep(size, op, rx, ry, imm);
 		if(rx != 0)
 		{
-			if(op >= UOP_ASL && op <= UOP_RCR) // these ops are always word-length
-				size = 2;
-
 			if(size == 2)
 				this.regs[rx] = ret;
 			else
