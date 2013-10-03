@@ -26,7 +26,8 @@ public class DebugSysSlot extends Memory
 			/* do nothing */;
 		else {
 			addr &= 0xFF;
-			if(addr == 0xFF)
+			//System.out.printf("debug %02X %02X\n", addr, 0xFF & (int)val);
+			if(addr == 0xFE)
 			{
 				System.out.printf("%c", (char)(0xFF & (int)val));
 				System.out.flush();

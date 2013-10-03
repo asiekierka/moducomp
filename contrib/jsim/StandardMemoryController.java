@@ -70,9 +70,10 @@ public class StandardMemoryController extends Memory
 		} else if(addr <= 0xFCFFF) {
 			// do nothing
 		} else if(addr <= 0xFDFFF) {
-			int subbank = (addr>>12) & 15;
+			int subbank = (addr>>8) & 15;
 
 			Memory slot = null;
+			//System.out.printf("%d\n", subbank);
 			if(subbank < 0xF)
 			{
 				slot = this.slots[subbank];

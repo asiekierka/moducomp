@@ -337,7 +337,7 @@ public class CPU
 			case UOP_NOP:
 				break;
 			case UOP_MOVE:
-				return (short)(this.regs[ry] + imm);
+				return (short)(ry != 0 ? this.regs[ry] : imm);
 			case UOP_CMP:
 			case UOP_SUB: {
 				int vx = 0xFFFF & (int)this.regs[rx];
@@ -393,7 +393,7 @@ public class CPU
 				int ret = vx ^ vy;
 				this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
 				this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
-				this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) != 0);
+				this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
 				return (short)ret;
 			} //break;
 			case UOP_OR: {
@@ -402,7 +402,7 @@ public class CPU
 				int ret = vx | vy;
 				this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
 				this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
-				this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) != 0);
+				this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
 				return (short)ret;
 			} //break;
 			case UOP_AND: {
@@ -413,7 +413,39 @@ public class CPU
 				int ret = vx & vy;
 				this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
 				this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
-				this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) != 0);
+				this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
+				return (short)ret;
+			} //break;
+			case UOP_ASL: {
+				int vx = this.regs[rx];
+				int vy = (ry == 0 ? imm : this.regs[ry]) & 0xF;
+				int ret = vx << vy;
+				this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
+				this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
+				this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
+				this.setFlag(F_CARRY, (ret & 0x10000) != 0);
+				return (short)ret;
+			} //break;
+			case UOP_ASR: {
+				int vx = 0xFFFF & (int)this.regs[rx];
+				int vy = (ry == 0 ? imm : this.regs[ry]) & 0xF;
+				int ret = vx >> vy;
+				int retpre = (vy == 0 ? vx << 1 : vx >> (vy-1));
+				this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
+				this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
+				this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
+				this.setFlag(F_CARRY, (retpre & 0x0001) != 0);
+				return (short)ret;
+			} //break;
+			case UOP_LSR: {
+				int vx = this.regs[rx];
+				int vy = (size == 2 ? ry : this.regs[ry]) & 0xF;
+				int ret = vx >>> vy;
+				int retpre = (vy == 0 ? vx << 1 : vx >>> (vy-1));
+				this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
+				this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
+				this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
+				this.setFlag(F_CARRY, (retpre & 0x0001) != 0);
 				return (short)ret;
 			} //break;
 			case UOP_JZ:
@@ -471,6 +503,9 @@ public class CPU
 			case UOP_SEI:
 				this.setFlag(F_INTERRUPT, true);
 				break;
+			case UOP_HLT:
+				this.halted = true;
+				break;
 			default:
 				if((op & 0x40) != 0)
 				{
@@ -481,13 +516,14 @@ public class CPU
 					if((op & 0x20) == 0)
 					{
 						// LD
-						System.out.printf("LD %05X %d\n", offs, size);
+						//System.out.printf("LD %05X\n", offs);
 						if(size == 2)
 							return this.read16(offs);
 						else
 							return this.read8(offs);
 					} else {
 						// ST
+						//System.out.printf("ST %05X\n", offs);
 						if(size == 2)
 							this.write16(offs, this.regs[rx]);
 						else
@@ -528,12 +564,24 @@ public class CPU
 		{
 			int lpc = this.pc;
 			int uop_data = loadUOP();
-			System.out.printf("%05X %08X:", lpc, uop_data);
+			if(false)
+			{
+				System.out.printf("%05X %08X:", lpc, uop_data);
+				System.out.printf(" %04X", 0xFFFF & (int)this.flags);
+				for(int i = 1; i < 16; i++)
+					System.out.printf(" %04X", 0xFFFF & (int)this.regs[i]);
+				System.out.println();
+			}
+			doUOP(uop_data);
+		}
+
+		if(true)
+		{
+			System.out.printf("HALT %05X:", this.pc);
 			System.out.printf(" %04X", 0xFFFF & (int)this.flags);
 			for(int i = 1; i < 16; i++)
 				System.out.printf(" %04X", 0xFFFF & (int)this.regs[i]);
 			System.out.println();
-			doUOP(uop_data);
 		}
 	}
 }
