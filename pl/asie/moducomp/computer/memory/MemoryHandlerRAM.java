@@ -1,8 +1,9 @@
 package pl.asie.moducomp.computer.memory;
 
-import pl.asie.moducomp.api.IMemoryHandler;
+import pl.asie.moducomp.api.computer.ICPU;
+import pl.asie.moducomp.api.computer.IMemory;
 
-public class MemoryHandlerRAM implements IMemoryHandler {
+public class MemoryHandlerRAM implements IMemory {
 	private byte[] data;
 	private final int size;
 	
@@ -12,28 +13,15 @@ public class MemoryHandlerRAM implements IMemoryHandler {
 	}
 	
 	@Override
-	public int read8(int addr) {
+	public byte read8(ICPU cpu, int addr) {
 		if(addr < 0 || addr >= this.size) return 0;
-		else return 0xFF & data[addr];
+		else return data[addr];
 	}
 
 	@Override
-	public int read16(int addr) {
-		if(addr < 0 || addr >= this.size) return 0;
-		else return read8(addr) | (read8(addr+1)<<8);
-	}
-
-	@Override
-	public void write8(int addr, byte val) {
+	public void write8(ICPU cpu, int addr, byte val) {
 		if(addr < 0 || addr >= this.size) return;
 		data[addr] = val;
-	}
-
-	@Override
-	public void write16(int addr, short val) {
-		if(addr < 0 || addr >= this.size) return;
-		data[addr] = (byte)(val&0xFF);
-		data[addr+1] = (byte)(val>>8);
 	}
 
 	@Override

@@ -11,6 +11,7 @@ import pl.asie.moducomp.block.TileEntityMusicBox;
 import pl.asie.moducomp.block.TileEntityTapeReader;
 import pl.asie.moducomp.integration.IntegrationOpenPeripheral;
 import pl.asie.moducomp.integration.ModIntegration;
+import pl.asie.moducomp.item.ItemCPUAreia;
 import pl.asie.moducomp.item.ItemPaperTape;
 import pl.asie.moducomp.item.ItemRAM;
 import net.minecraft.block.Block;
@@ -37,6 +38,7 @@ public class ModularComputing {
 	public BlockRAMBoard blockRAMBoard;
 	public ItemPaperTape itemPaperTape;
 	public ItemRAM itemRAM;
+	public ItemCPUAreia itemCPUAreia;
 	
 	private Configuration config;
 	
@@ -83,6 +85,7 @@ public class ModularComputing {
     	
     	itemPaperTape = (ItemPaperTape) registerItem(ItemPaperTape.class, "moducomp.paper_tape", 19200);
     	itemRAM = (ItemRAM) registerItem(ItemRAM.class, "moducomp.ram", 19201);
+    	itemCPUAreia = (ItemCPUAreia) registerItem(ItemCPUAreia.class, "moducomp.cpu_areia", 19202);
     	
     	config.save();
     	proxy.setupEvents();
