@@ -37,7 +37,8 @@ public class Tester
 			cpu.resetCold();
 			cpu.cycles = 0;
 			long t_start = System.nanoTime();
-			cpu.runUntilHalt();
+			//cpu.runUntilHalt();
+			cpu.run(10000000);
 			long t_end = System.nanoTime();
 			int t_total = (int)((t_end - t_start)/1000);
 			double t_total_f = t_total/1000000.0;

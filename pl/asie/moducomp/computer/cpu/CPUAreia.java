@@ -320,16 +320,12 @@ public class CPUAreia implements ICPU {
 	}
 
 	private void setParityFlag(short val)
-	{
-		int sum = 0;
+	{	
+		int v = 0xFFFF & val;
+		v ^= v >> 8;
+		v ^= v >> 4;
 
-		for(int i = 0; i < 16; i++)
-		{
-			sum += (val & 1);
-			val >>= 1;
-		}
-
-		this.setFlag(F_OVERFLOW, (val & 1) != 0);
+		this.setFlag(F_OVERFLOW, ((0x6996 >> (v & 0xf)) & 1) != 0);
 	}
 
 	private short doUOPStep(int size, int op, int rx, int ry, int imm)
@@ -364,7 +360,7 @@ public class CPUAreia implements ICPU {
 						this.setFlag(F_OVERFLOW, aimm + axval >= 0x80);
 				} else {
 					// differing signs
-					this.setFlag(F_OVERFLOW, false);
+					this.flags &= ~F_OVERFLOW;
 				}
 
 				if(op != UOP_CMP)
@@ -388,7 +384,7 @@ public class CPUAreia implements ICPU {
 						this.setFlag(F_OVERFLOW, aimm + axval >= 0x80);
 				} else {
 					// differing signs
-					this.setFlag(F_OVERFLOW, false);
+					this.flags &= ~F_OVERFLOW;
 				}
 
 				if(op != UOP_CMP)
@@ -505,10 +501,10 @@ public class CPUAreia implements ICPU {
 				this.pc = pc_low + (pc_high<<16);
 			} break;
 			case UOP_CLI:
-				this.setFlag(F_INTERRUPT, false);
+				this.flags &= ~F_INTERRUPT;
 				break;
 			case UOP_SEI:
-				this.setFlag(F_INTERRUPT, true);
+				this.flags |= F_INTERRUPT;
 				break;
 			case UOP_HLT:
 				this.halted = true;
@@ -547,7 +543,7 @@ public class CPUAreia implements ICPU {
 
 	private void doUOP(int uop_data)
 	{
-		int size = ((uop_data>>31) & 1) + 1;
+		int size = ((uop_data>>30) & 2);
 		int op = (uop_data>>24) & 0x7F;
 		int rx = (uop_data>>16) & 0x0F;
 		int ry = (uop_data>>20) & 0x0F;
@@ -567,32 +563,36 @@ public class CPUAreia implements ICPU {
 		// TODO
 		return false;
 	}
+	
+	private boolean debug = false;
+	
+	public void setDebug(boolean debug) { this.debug = debug; }
 
-	@SuppressWarnings("unused")
+	public void debugPC(int pc) {
+		System.out.printf("%05X:", pc);
+		System.out.printf(" %04X", 0xFFFF & (int)this.flags);
+		for(int i = 1; i < 16; i++)
+			System.out.printf(" %04X", 0xFFFF & (int)this.regs[i]);
+		System.out.println();
+	}
+	public void debugPC() {
+		debugPC(this.pc);
+	}
+
 	public void doCycle()
 	{
 		while(!this.halted)
 		{
-			int lpc = this.pc;
-			int uop_data = loadUOP();
-			if(false)
-			{
-				System.out.printf("%05X %08X:", lpc, uop_data);
-				System.out.printf(" %04X", 0xFFFF & (int)this.flags);
-				for(int i = 1; i < 16; i++)
-					System.out.printf(" %04X", 0xFFFF & (int)this.regs[i]);
-				System.out.println();
-			}
-			doUOP(uop_data);
+			if(debug) {
+				int lpc = this.pc;
+				doUOP(loadUOP());
+				debugPC();
+			} else doUOP(loadUOP());
 		}
 
-		if(true)
-		{
-			System.out.printf("HALT %05X:", this.pc);
-			System.out.printf(" %04X", 0xFFFF & (int)this.flags);
-			for(int i = 1; i < 16; i++)
-				System.out.printf(" %04X", 0xFFFF & (int)this.regs[i]);
-			System.out.println();
+		if(debug) {
+			System.out.printf("HALT! ");
+			debugPC();
 		}
 	}
 	
@@ -605,6 +605,13 @@ public class CPUAreia implements ICPU {
 	public void run(int cycles) {
 		int startCycles = this.cycles;
 		for(; this.cycles < startCycles + cycles;) {
+			if(this.halted) {
+				if(debug) {
+					System.out.printf("HALT! ");
+					debugPC();
+				}
+				return;
+			}
 			if(waitCycles > 0) {
 				if(waitCycles <= (this.cycles - startCycles - cycles)) { // Still enough time
 					this.cycles += waitCycles;
@@ -615,7 +622,7 @@ public class CPUAreia implements ICPU {
 					waitCycles -= cyclesLeft;
 				}
 			}
-			doCycle();
+			doUOP(loadUOP());
 		}
 	}
 }
