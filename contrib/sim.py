@@ -441,7 +441,7 @@ class CPU:
 
 					retval = xval + imm
 
-					if ((xval ^ imm) & 0x8000) == 0:
+					if ((xval ^ imm) & (0x8000 if size else 0x80)) == 0:
 						# same signs
 						aimm = (imm if imm < 0x8000 else 0x10000-imm)
 						axval = (xval if xval < 0x8000 else 0x10000-xval)
@@ -460,7 +460,7 @@ class CPU:
 					self.flag_set(F_CARRY, xval < imm) 
 					retval = xval - imm
 
-					if ((xval ^ imm) & 0x8000) != 0:
+					if ((xval ^ imm) & (0x8000 if size else 0x80)) != 0:
 						# differing signs
 						aimm = (imm if imm < 0x8000 else 0x10000-imm)
 						axval = (xval if xval < 0x8000 else 0x10000-xval)
