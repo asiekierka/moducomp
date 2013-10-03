@@ -62,7 +62,6 @@ public class CPUAreia implements ICPU {
 	public CPUAreia()
 	{
 		this.halted = false;
-		this.resetCold();
 	}
 	
 	public void setMemoryHandler(IMemory ctl) {
