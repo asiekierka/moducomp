@@ -595,5 +595,28 @@ public class CPUAreia implements ICPU {
 			System.out.println();
 		}
 	}
+	
+	private int waitCycles;
+	
+	public void wait(int cycles) {
+		waitCycles += cycles;
+	}
+	
+	public void run(int cycles) {
+		int startCycles = this.cycles;
+		for(; this.cycles < startCycles + cycles;) {
+			if(waitCycles > 0) {
+				if(waitCycles <= (this.cycles - startCycles - cycles)) { // Still enough time
+					this.cycles += waitCycles;
+					waitCycles = 0;
+				} else { // Not enough time
+					int cyclesLeft = (this.cycles - startCycles - cycles);
+					this.cycles += cyclesLeft;
+					waitCycles -= cyclesLeft;
+				}
+			}
+			doCycle();
+		}
+	}
 }
 
