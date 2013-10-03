@@ -9,7 +9,7 @@ public abstract class Memory
 		return (byte)0xFF;
 	}
 
-	public void write8(int addr, byte val)
+	public void write8(CPU cpu, int addr, byte val)
 	{
 		// Do nothing.
 	}

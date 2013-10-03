@@ -89,7 +89,7 @@ public class CPU
 		addr &= 0xFFFFF;
 		if(addr <= 0xFFF7F)
 		{
-			this.memctl.write8(addr, val);
+			this.memctl.write8(this, addr, val);
 		} else {
 			addr &= 0x7F;
 			// TODO: find specific triggers we can use
@@ -312,14 +312,32 @@ public class CPU
 			this.flags &= ~flag;
 	}
 
+	private void setParityFlag(short val)
+	{
+		int sum = 0;
+
+		for(int i = 0; i < 16; i++)
+		{
+			sum += (val & 1);
+			val >>= 1;
+		}
+
+		this.setFlag(F_OVERFLOW, (val & 1) != 0);
+	}
+
 	private short doUOPStep(int size, int op, int rx, int ry, int imm)
 	{
+		if(op >= UOP_JZ && op <= UOP_JSR)
+		{
+			imm = 0xFFFFF & (imm + (ry<<16) + (0xFFFF & (int)this.regs[rx]));
+		}
+
 		switch(op)
 		{
 			case UOP_NOP:
 				break;
 			case UOP_MOVE:
-				return this.regs[ry];
+				return (short)(this.regs[ry] + imm);
 			case UOP_CMP:
 			case UOP_SUB: {
 				int vx = 0xFFFF & (int)this.regs[rx];
@@ -370,63 +388,83 @@ public class CPU
 					return (short)ret;
 			} break;
 			case UOP_XOR: {
-				// TODO: flags
 				int vx = this.regs[rx];
 				int vy = (ry == 0 ? imm : this.regs[ry]);
 				int ret = vx ^ vy;
+				this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
+				this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
+				this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) != 0);
 				return (short)ret;
 			} //break;
 			case UOP_OR: {
-				// TODO: flags
 				int vx = this.regs[rx];
 				int vy = (ry == 0 ? imm : this.regs[ry]);
 				int ret = vx | vy;
+				this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
+				this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
+				this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) != 0);
 				return (short)ret;
 			} //break;
 			case UOP_AND: {
-				// TODO: flags
 				int vx = this.regs[rx];
 				int vy = (ry == 0 ? imm : this.regs[ry]);
 				if(size == 1)
 					vy |= 0xFF00;
 				int ret = vx & vy;
+				this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
+				this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
+				this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) != 0);
 				return (short)ret;
 			} //break;
 			case UOP_JZ:
 				if((this.flags & F_ZERO) != 0)
-					this.pc = (ry<<16) | imm;
+					this.pc = imm;
 				break;
 			case UOP_JNZ:
 				if((this.flags & F_ZERO) == 0)
-					this.pc = (ry<<16) | imm;
+					this.pc = imm;
 				break;
 			case UOP_JC:
 				if((this.flags & F_CARRY) != 0)
-					this.pc = (ry<<16) | imm;
+					this.pc = imm;
 				break;
 			case UOP_JNC:
 				if((this.flags & F_CARRY) == 0)
-					this.pc = (ry<<16) | imm;
+					this.pc = imm;
 				break;
 			case UOP_JS:
 				if((this.flags & F_SIGNED) != 0)
-					this.pc = (ry<<16) | imm;
+					this.pc = imm;
 				break;
 			case UOP_JNS:
 				if((this.flags & F_SIGNED) == 0)
-					this.pc = (ry<<16) | imm;
+					this.pc = imm;
 				break;
 			case UOP_JV:
 				if((this.flags & F_OVERFLOW) != 0)
-					this.pc = (ry<<16) | imm;
+					this.pc = imm;
 				break;
 			case UOP_JNV:
 				if((this.flags & F_OVERFLOW) == 0)
-					this.pc = (ry<<16) | imm;
+					this.pc = imm;
 				break;
 			case UOP_JMP:
-				this.pc = (ry<<16) | imm;
+				this.pc = imm;
 				break;
+			case UOP_JSR:
+				this.regs[15] -= 1;
+				this.write8(0xF0000 | (0xFFFF & (int)this.regs[15]), (byte)(this.pc>>16));
+				this.regs[15] -= 2;
+				this.write16(0xF0000 | (0xFFFF & (int)this.regs[15]), (short)this.pc);
+				this.pc = imm;
+				break;
+			case UOP_RET: {
+				int pc_low = 0xFFFF & (int)this.read16(0xF0000 | (0xFFFF & (int)this.regs[15]));
+				this.regs[15] += 2;
+				int pc_high = 0xF & (int)this.read8(0xF0000 | (0xFFFF & (int)this.regs[15]));
+				this.regs[15] += 1;
+				this.pc = pc_low + (pc_high<<16);
+			} break;
 			case UOP_CLI:
 				this.setFlag(F_INTERRUPT, false);
 				break;
@@ -474,6 +512,9 @@ public class CPU
 		short ret = doUOPStep(size, op, rx, ry, imm);
 		if(rx != 0)
 		{
+			if(op >= UOP_ASL && op <= UOP_RCR) // these ops are always word-length
+				size = 2;
+
 			if(size == 2)
 				this.regs[rx] = ret;
 			else

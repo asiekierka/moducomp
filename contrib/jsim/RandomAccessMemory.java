@@ -23,7 +23,7 @@ public class RandomAccessMemory extends Memory
 		}
 	}
 	
-	public void write8(int addr, byte val)
+	public void write8(CPU cpu, int addr, byte val)
 	{
 		if((addr & 0x200000) == 0)
 			this.data[addr & (this.size-1)] = val;

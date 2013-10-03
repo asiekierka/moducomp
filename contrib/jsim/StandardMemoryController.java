@@ -14,7 +14,7 @@ public class StandardMemoryController extends Memory
 		this.rom = rom;
 	}
 
-	public void setSysRom(Memory sys_slot)
+	public void setSysSlot(Memory sys_slot)
 	{
 		this.sys_slot = sys_slot;
 	}
@@ -49,6 +49,43 @@ public class StandardMemoryController extends Memory
 		} else {
 			Memory slot = this.rom;
 			return (slot == null ? (byte)0xFF : slot.read8(cpu, addr & 0x1FFF));
+		}
+	}
+
+	public void write8(CPU cpu, int addr, byte val)
+	{
+		addr &= 0xFFFFF;
+
+		// 48KB mirror
+		if(addr >= 0xF0000 && addr <= 0xFBFFF)
+			addr &= 0xFFFF;
+
+		int bank = (addr>>16);
+
+		if(bank < 0xF)
+		{
+			Memory slot = this.slots[bank];
+			if(slot != null)
+				slot.write8(cpu, addr & 0xFFFF, val);
+		} else if(addr <= 0xFCFFF) {
+			// do nothing
+		} else if(addr <= 0xFDFFF) {
+			int subbank = (addr>>12) & 15;
+
+			Memory slot = null;
+			if(subbank < 0xF)
+			{
+				slot = this.slots[subbank];
+			} else {
+				slot = this.sys_slot;
+			}
+
+			if(slot != null)
+				slot.write8(cpu, (addr & 0xFF) | 0x200000, val);
+		} else {
+			Memory slot = this.rom;
+			if(slot != null)
+				slot.write8(cpu, addr & 0x1FFF, val);
 		}
 	}
 }

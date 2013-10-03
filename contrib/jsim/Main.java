@@ -10,6 +10,7 @@ public class Main
 		int v = new FileInputStream(new File("../bios.rom")).read(rom, 0, rom.length);
 		System.out.printf("%d\n", v);
 		memctl.setROM(new ReadOnlyMemory(rom.length, rom));
+		memctl.setSysSlot(new DebugSysSlot());
 
 		CPU cpu = new CPU(memctl);
 		cpu.cold_reset();
