@@ -2,6 +2,7 @@ package pl.asie.moducomp.item;
 
 import java.util.List;
 
+import pl.asie.moducomp.ModularComputing;
 import pl.asie.moducomp.api.IItemMemory;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -16,7 +17,7 @@ public abstract class ItemMemory extends Item implements IItemMemory {
 		super(id);
 		this.setUnlocalizedName(name);
 		this.setTextureName("moducomp:generic_chip");
-		this.setCreativeTab(CreativeTabs.tabRedstone);
+		this.setCreativeTab(ModularComputing.instance.tab);
 	}
 	
     @Override

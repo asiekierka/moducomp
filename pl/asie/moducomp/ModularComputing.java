@@ -40,6 +40,8 @@ public class ModularComputing {
 	public ItemRAM itemRAM;
 	public ItemCPUAreia itemCPUAreia;
 	
+	public CreativeTabModuComp tab;
+	
 	private Configuration config;
 	
 	@SidedProxy(clientSide="pl.asie.moducomp.ClientProxy", serverSide="pl.asie.moducomp.CommonProxy")
@@ -78,6 +80,8 @@ public class ModularComputing {
     	
     	config = new Configuration(event.getSuggestedConfigurationFile());
     	config.load();
+    	
+    	tab = new CreativeTabModuComp("moducomp");
     	
     	blockTapeReader = (BlockTapeReader) registerBlock(BlockTapeReader.class, "moducomp.tape_reader", 1920);
     	blockMusicBox = (BlockMusicBox) registerBlock(BlockMusicBox.class, "moducomp.music_box", 1921);

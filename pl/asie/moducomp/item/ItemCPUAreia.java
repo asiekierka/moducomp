@@ -2,6 +2,7 @@ package pl.asie.moducomp.item;
 
 import java.util.List;
 
+import pl.asie.moducomp.ModularComputing;
 import pl.asie.moducomp.api.IItemCPU;
 import pl.asie.moducomp.api.computer.ICPU;
 import pl.asie.moducomp.computer.cpu.CPUAreia;
@@ -18,7 +19,7 @@ public class ItemCPUAreia extends Item implements IItemCPU {
 		super(id);
 		this.setUnlocalizedName(name);
 		this.setTextureName("moducomp:cpu_areia");
-		this.setCreativeTab(CreativeTabs.tabRedstone);
+		this.setCreativeTab(ModularComputing.instance.tab);
 	}
 	
 	@Override

@@ -15,7 +15,7 @@ public abstract class BlockMachine extends BlockContainer {
             super(id, Material.circuits);
     		this.setHardness(4.5F);
     		this.setUnlocalizedName(name);
-    		this.setCreativeTab(CreativeTabs.tabRedstone);
+    		this.setCreativeTab(ModularComputing.instance.tab);
     		this.setBlockBounds(0.0F, 0.0F, 0.0F, 1.0F, 1.0F, 1.0F);
     }
     

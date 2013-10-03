@@ -24,6 +24,13 @@ public class ItemRAM extends ItemMemory implements IItemMemory {
 	}
 	
 	@Override
+    public void getSubItems(int id, CreativeTabs tab, List items)
+    {
+        for (int meta = 0; meta <= (16 - MIN_LENGTH); meta++)
+            items.add(new ItemStack(id, 1, meta));
+    }
+	
+	@Override
 	public IMemory createNewMemoryHandler(ItemStack stack) {
 		return new MemoryHandlerRAM(this.getLength(stack));
 	}

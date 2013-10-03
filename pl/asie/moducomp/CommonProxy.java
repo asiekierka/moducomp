@@ -10,6 +10,7 @@ public class CommonProxy {
 		lr.addStringLocalization("item.moducomp.paper_tape.name", "Paper Tape");
 		lr.addStringLocalization("item.moducomp.ram.name", "Random Access Memory");
 		lr.addStringLocalization("item.moducomp.cpu_areia.name", "Areia-1 Central Processing Unit");
+		lr.addStringLocalization("itemGroup.moducomp.name", "Modular Computing");
 	}
 	
 	public void setupEvents() { }

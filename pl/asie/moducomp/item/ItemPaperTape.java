@@ -4,6 +4,7 @@ import java.util.List;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import pl.asie.moducomp.ModularComputing;
 import pl.asie.moducomp.api.IItemTape;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.player.EntityPlayer;
@@ -12,13 +13,13 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 
 public class ItemPaperTape extends Item implements IItemTape {
-	public static final int MAX_TAPE_LENGTH = (65536/32);
+	public static final int MAX_TAPE_LENGTH = (16384/32);
 	
 	public ItemPaperTape(int id, String name) {
 		super(id);
 		this.setUnlocalizedName(name);
 		this.setTextureName("moducomp:paper_tape");
-   		this.setCreativeTab(CreativeTabs.tabRedstone);
+   		this.setCreativeTab(ModularComputing.instance.tab);
 	}
 	
 	private boolean check(ItemStack stack) {
