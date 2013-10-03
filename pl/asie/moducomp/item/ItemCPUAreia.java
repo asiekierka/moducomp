@@ -17,7 +17,7 @@ public class ItemCPUAreia extends Item implements IItemCPU {
 	public ItemCPUAreia(int id, String name) {
 		super(id);
 		this.setUnlocalizedName(name);
-		this.setTextureName("moducomp:generic_chip");
+		this.setTextureName("moducomp:cpu_areia");
 		this.setCreativeTab(CreativeTabs.tabRedstone);
 	}
 	
