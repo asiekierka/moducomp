@@ -627,7 +627,7 @@ public class CPU
 
 	private boolean opCanJump(int op)
 	{
-		return (op >= UOP_JZ && op <= UOP_JSR) || op == UOP_RET;
+		return (op >= UOP_JZ && op <= UOP_JSR) || op == UOP_RET || op == UOP_HLT;
 	}
 
 	private boolean opReturns(int op, int rx)
