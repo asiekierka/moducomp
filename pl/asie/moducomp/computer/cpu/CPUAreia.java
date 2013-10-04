@@ -1,9 +1,14 @@
 package pl.asie.moducomp.computer.cpu;
 
+import java.util.*;
 import pl.asie.moducomp.api.computer.ICPU;
 import pl.asie.moducomp.api.computer.IMemory;
+import pl.asie.moducomp.api.computer.IMemoryController;
 
-public class CPUAreia implements ICPU {
+public class CPUAreia implements ICPU
+{
+	private class HaltCPU extends Exception {}
+
 	// RULES FOR ACCESSING THE CYCLES VARIABLE:
 	// - Increment this if you need extra wait states for read access.
 	//   The CPU will increment it by 1 each read.
@@ -16,7 +21,7 @@ public class CPUAreia implements ICPU {
 	public static final int F_SIGNED = 0x0008;
 	public static final int F_INTERRUPT = 0x0010;
 
-	public static final int UOP_HLT = 0;
+	public static final int UOP_NOP = 0;
 	public static final int UOP_MOVE = 1;
 	public static final int UOP_CMP = 2;
 	public static final int UOP_ADD = 3;
@@ -46,7 +51,7 @@ public class CPUAreia implements ICPU {
 	public static final int UOP_PUSHF = 27;
 	public static final int UOP_CLI = 28;
 	public static final int UOP_SEI = 29;
-	public static final int UOP_NOP = 30;
+	public static final int UOP_HLT = 30;
 
 	public static final int UOP_LD = 64;
 	public static final int UOP_ST = 96;
@@ -58,6 +63,37 @@ public class CPUAreia implements ICPU {
 	private boolean open_hatch;
 	private short regs[] = new short[16];
 	private byte intregs[] = new byte[128];
+
+	private class SavedUop
+	{
+		public int uop;
+		public byte load_cycles;
+		public short fmask;
+		public int new_pc;
+		public boolean use_ret;
+		public boolean can_jump;
+
+		public SavedUop(int uop, int load_cycles, int new_pc, short fmask, boolean use_ret, boolean can_jump)
+		{
+			this.uop = uop;
+			this.load_cycles = (byte)load_cycles;
+			this.new_pc = new_pc;
+			this.fmask = fmask;
+			this.use_ret = use_ret;
+			this.can_jump = can_jump;
+		}
+	}
+
+	private class SavedUopBank
+	{
+		public int pc_start, pc_end;
+		public int load_cycles;
+		public SavedUop[] chain;
+	}
+
+	private SavedUopBank[] uop_cache = new SavedUopBank[8];
+	{ for(int i = 0; i < uop_cache.length; i++) { uop_cache[i] = new SavedUopBank(); uop_cache[i].chain = new SavedUop[64]; uop_cache[i].pc_start = -1; } }
+	private int uop_cache_ptr = 0;
 
 	public CPUAreia()
 	{
@@ -152,12 +188,28 @@ public class CPUAreia implements ICPU {
 		this.resetWarm();
 	}
 
-	public void runUntilHalt()
+	public boolean isHalted()
 	{
-		this.doCycle();
+		return this.halted;
 	}
 
-	private int loadUOP()
+	public void debugPC(int pc) {
+		System.out.printf("%05X:", pc);
+		System.out.printf(" %04X", 0xFFFF & (int)this.flags);
+		for(int i = 1; i < 16; i++)
+			System.out.printf(" %04X", 0xFFFF & (int)this.regs[i]);
+		System.out.println();
+	}
+	
+	public void debugPC() { debugPC(this.pc); }
+
+	public void clearUops()
+	{
+		for(int i = 0; i < uop_cache.length; i++)
+			uop_cache[i].pc_start = -1;
+	}
+
+	private int loadUop()
 	{
 		int op = 0xFF & (int)this.fetch8();
 
@@ -320,15 +372,12 @@ public class CPUAreia implements ICPU {
 	}
 
 	private void setParityFlag(short val)
-	{	
-		int v = 0xFFFF & val;
-		v ^= v >> 8;
-		v ^= v >> 4;
-
-		this.setFlag(F_OVERFLOW, ((0x6996 >> (v & 0xf)) & 1) != 0);
+	{
+		byte v = (byte)(val^(val>>8));
+		this.setFlag(F_OVERFLOW, ((0x6996 >> ((v^(v>>4)) & 0xf)) & 1) != 0);
 	}
 
-	private short doUOPStep(int size, int op, int rx, int ry, int imm)
+	private short doUopStep(int size, int op, int rx, int ry, int imm, short fmask) throws HaltCPU
 	{
 		if(op >= UOP_JZ && op <= UOP_JSR)
 		{
@@ -346,21 +395,24 @@ public class CPUAreia implements ICPU {
 				int vx = 0xFFFF & (int)this.regs[rx];
 				int vy = (ry == 0 ? imm : 0xFFFF & (int)this.regs[ry]);
 				int ret = vx - vy;
-				this.setFlag(F_CARRY, vx < vy);
-				this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
-				this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
-				if (((vx ^ vy) & (size == 2 ? 0x8000 : 0x0080)) == 0)
+				if((fmask & F_CARRY) != 0) this.setFlag(F_CARRY, vx < vy);
+				if((fmask & F_ZERO) != 0) this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
+				if((fmask & F_SIGNED) != 0) this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
+				if((fmask & F_OVERFLOW) != 0)
 				{
-					// same signs
-					int aimm = (vy < 0x8000 ? vy :  0x10000-vy);
-					int axval = (vx < 0x8000 ? vx : 0x10000-vx);
-					if(size == 2)
-						this.setFlag(F_OVERFLOW, aimm + axval >= 0x8000);
-					else
-						this.setFlag(F_OVERFLOW, aimm + axval >= 0x80);
-				} else {
-					// differing signs
-					this.flags &= ~F_OVERFLOW;
+					if (((vx ^ vy) & (size == 2 ? 0x8000 : 0x0080)) == 0)
+					{
+						// same signs
+						int aimm = (vy < 0x8000 ? vy :  0x10000-vy);
+						int axval = (vx < 0x8000 ? vx : 0x10000-vx);
+						if(size == 2)
+							if((fmask & F_OVERFLOW) != 0) this.setFlag(F_OVERFLOW, aimm + axval >= 0x8000);
+						else
+							if((fmask & F_OVERFLOW) != 0) this.setFlag(F_OVERFLOW, aimm + axval >= 0x80);
+					} else {
+						// differing signs
+						if((fmask & F_OVERFLOW) != 0) this.setFlag(F_OVERFLOW, false);
+					}
 				}
 
 				if(op != UOP_CMP)
@@ -370,21 +422,24 @@ public class CPUAreia implements ICPU {
 				int vx = 0xFFFF & (int)this.regs[rx];
 				int vy = (ry == 0 ? imm : 0xFFFF & (int)this.regs[ry]);
 				int ret = vx + vy;
-				this.setFlag(F_CARRY, (size == 2 ? ret >= 0x10000 : ret >= 0x100));
-				this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
-				this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
-				if (((vx ^ vy) & (size == 2 ? 0x8000 : 0x0080)) == 0)
+				if((fmask & F_CARRY) != 0) this.setFlag(F_CARRY, (size == 2 ? ret >= 0x10000 : ret >= 0x100));
+				if((fmask & F_ZERO) != 0) this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
+				if((fmask & F_SIGNED) != 0) this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
+				if((fmask & F_OVERFLOW) != 0)
 				{
-					// same signs
-					int aimm = (vy < 0x8000 ? vy :  0x10000-vy);
-					int axval = (vx < 0x8000 ? vx : 0x10000-vx);
-					if(size == 2)
-						this.setFlag(F_OVERFLOW, aimm + axval >= 0x8000);
-					else
-						this.setFlag(F_OVERFLOW, aimm + axval >= 0x80);
-				} else {
-					// differing signs
-					this.flags &= ~F_OVERFLOW;
+					if (((vx ^ vy) & (size == 2 ? 0x8000 : 0x0080)) == 0)
+					{
+						// same signs
+						int aimm = (vy < 0x8000 ? vy :  0x10000-vy);
+						int axval = (vx < 0x8000 ? vx : 0x10000-vx);
+						if(size == 2)
+							if((fmask & F_OVERFLOW) != 0) this.setFlag(F_OVERFLOW, aimm + axval >= 0x8000);
+						else
+							if((fmask & F_OVERFLOW) != 0) this.setFlag(F_OVERFLOW, aimm + axval >= 0x80);
+					} else {
+						// differing signs
+						if((fmask & F_OVERFLOW) != 0) this.setFlag(F_OVERFLOW, false);
+					}
 				}
 
 				if(op != UOP_CMP)
@@ -394,18 +449,18 @@ public class CPUAreia implements ICPU {
 				int vx = this.regs[rx];
 				int vy = (ry == 0 ? imm : this.regs[ry]);
 				int ret = vx ^ vy;
-				this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
-				this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
-				this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
+				if((fmask & F_OVERFLOW) != 0) this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
+				if((fmask & F_SIGNED) != 0) this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
+				if((fmask & F_ZERO) != 0) this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
 				return (short)ret;
 			} //break;
 			case UOP_OR: {
 				int vx = this.regs[rx];
 				int vy = (ry == 0 ? imm : this.regs[ry]);
 				int ret = vx | vy;
-				this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
-				this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
-				this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
+				if((fmask & F_OVERFLOW) != 0) this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
+				if((fmask & F_SIGNED) != 0) this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
+				if((fmask & F_ZERO) != 0) this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
 				return (short)ret;
 			} //break;
 			case UOP_AND: {
@@ -414,19 +469,19 @@ public class CPUAreia implements ICPU {
 				if(size == 1)
 					vy |= 0xFF00;
 				int ret = vx & vy;
-				this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
-				this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
-				this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
+				if((fmask & F_OVERFLOW) != 0) this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
+				if((fmask & F_SIGNED) != 0) this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
+				if((fmask & F_ZERO) != 0) this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
 				return (short)ret;
 			} //break;
 			case UOP_ASL: {
 				int vx = 0xFFFF & (int)this.regs[rx];
 				int vy = (ry == 0 ? imm : this.regs[ry]) & 0xF;
 				int ret = vx << vy;
-				this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
-				this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
-				this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
-				this.setFlag(F_CARRY, (ret & 0x10000) != 0);
+				if((fmask & F_OVERFLOW) != 0) this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
+				if((fmask & F_SIGNED) != 0) this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
+				if((fmask & F_ZERO) != 0) this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
+				if((fmask & F_CARRY) != 0) this.setFlag(F_CARRY, (ret & 0x10000) != 0);
 				return (short)ret;
 			} //break;
 			case UOP_ASR: {
@@ -434,10 +489,10 @@ public class CPUAreia implements ICPU {
 				int vy = (ry == 0 ? imm : this.regs[ry]) & 0xF;
 				int ret = vx >> vy;
 				int retpre = (vy == 0 ? vx << 1 : vx >> (vy-1));
-				this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
-				this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
-				this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
-				this.setFlag(F_CARRY, (retpre & 0x0001) != 0);
+				if((fmask & F_OVERFLOW) != 0) this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
+				if((fmask & F_SIGNED) != 0) this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
+				if((fmask & F_ZERO) != 0) this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
+				if((fmask & F_CARRY) != 0) this.setFlag(F_CARRY, (retpre & 0x0001) != 0);
 				return (short)ret;
 			} //break;
 			case UOP_LSR: {
@@ -445,10 +500,10 @@ public class CPUAreia implements ICPU {
 				int vy = (ry == 0 ? imm : this.regs[ry]) & 0xF;
 				int ret = vx >>> vy;
 				int retpre = (vy == 0 ? vx << 1 : vx >>> (vy-1));
-				this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
-				this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
-				this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
-				this.setFlag(F_CARRY, (retpre & 0x0001) != 0);
+				if((fmask & F_OVERFLOW) != 0) this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
+				if((fmask & F_SIGNED) != 0) this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
+				if((fmask & F_ZERO) != 0) this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
+				if((fmask & F_CARRY) != 0) this.setFlag(F_CARRY, (retpre & 0x0001) != 0);
 				return (short)ret;
 			} //break;
 			case UOP_JZ:
@@ -501,14 +556,15 @@ public class CPUAreia implements ICPU {
 				this.pc = pc_low + (pc_high<<16);
 			} break;
 			case UOP_CLI:
-				this.flags &= ~F_INTERRUPT;
+				this.setFlag(F_INTERRUPT, false);
 				break;
 			case UOP_SEI:
-				this.flags |= F_INTERRUPT;
+				this.setFlag(F_INTERRUPT, true);
 				break;
 			case UOP_HLT:
 				this.halted = true;
-				break;
+				throw new HaltCPU();
+				//break;
 			default:
 				if((op & 0x40) != 0)
 				{
@@ -541,16 +597,17 @@ public class CPUAreia implements ICPU {
 		return this.regs[rx];
 	}
 
-	private void doUOP(int uop_data)
+	private void doUop(int uop_data, short fmask, boolean use_ret) throws HaltCPU
 	{
-		int size = ((uop_data>>30) & 2);
+		int size = ((uop_data>>31) & 1) + 1;
 		int op = (uop_data>>24) & 0x7F;
 		int rx = (uop_data>>16) & 0x0F;
 		int ry = (uop_data>>20) & 0x0F;
 		int imm = (uop_data) & 0xFFFF;
 
-		short ret = doUOPStep(size, op, rx, ry, imm);
-		if(rx != 0)
+		short ret = doUopStep(size, op, rx, ry, imm, fmask);
+
+		if(use_ret)
 		{
 			if(size == 2)
 				this.regs[rx] = ret;
@@ -558,72 +615,180 @@ public class CPUAreia implements ICPU {
 				this.regs[rx] = (short)((this.regs[rx] & 0xFF00) | (0xFF & (int)ret));
 		}
 	}
-	
-	public boolean interrupt(int line) {
-		// TODO
-		return false;
-	}
-	
-	private boolean debug = false;
-	
-	public void setDebug(boolean debug) { this.debug = debug; }
 
-	public void debugPC(int pc) {
-		System.out.printf("%05X:", pc);
-		System.out.printf(" %04X", 0xFFFF & (int)this.flags);
-		for(int i = 1; i < 16; i++)
-			System.out.printf(" %04X", 0xFFFF & (int)this.regs[i]);
-		System.out.println();
-	}
-	public void debugPC() {
-		debugPC(this.pc);
-	}
-
-	public void doCycle()
+	private short opFlagWrites(int op)
 	{
-		while(!this.halted)
-		{
-			if(debug) {
-				int lpc = this.pc;
-				doUOP(loadUOP());
-				debugPC();
-			} else doUOP(loadUOP());
-		}
+		if(op >= UOP_CMP && op <= UOP_SUB)
+			return (short)(F_ZERO | F_SIGNED | F_OVERFLOW | F_CARRY);
+		else if(op >= UOP_XOR && op <= UOP_AND)
+			return (short)(F_ZERO | F_SIGNED | F_OVERFLOW);
+		else if(op >= UOP_ASL && op <= UOP_RCR)
+			return (short)(F_ZERO | F_SIGNED | F_OVERFLOW | F_CARRY);
+		else if(op == UOP_POPF)
+			return (short)0xFFFF;
+		else
+			return 0;
+	}
 
-		if(debug) {
-			System.out.printf("HALT! ");
-			debugPC();
+	private boolean opCanJump(int op)
+	{
+		return (op >= UOP_JZ && op <= UOP_JSR) || op == UOP_RET || op == UOP_HLT;
+	}
+
+	private boolean opReturns(int op, int rx)
+	{
+		if(rx == 0)
+			return false;
+
+		if(op >= UOP_MOVE && op <= UOP_RCL)
+		{
+			return true; // TODO: actually check these
+		} else if(op >= UOP_JZ && op <= UOP_HLT) {
+			return false;
+		} else {
+			return true;
 		}
 	}
-	
+
+	private SavedUopBank fetchUopChain()
+	{
+		SavedUopBank bank = null;
+		int lpc = this.pc;
+		int lcyc = this.cycles;
+
+		for(int i = 0; i < uop_cache.length; i++)
+		{
+			bank = uop_cache[i];
+			if(bank.pc_start == lpc)
+				return bank;
+		}
+
+		bank = uop_cache[this.uop_cache_ptr];
+		this.uop_cache_ptr = (this.uop_cache_ptr+1) & (uop_cache.length-1);
+		SavedUop[] chain = bank.chain;
+		bank.pc_start = lpc;
+
+		for(int i = 0; i < chain.length; i++)
+		{
+			SavedUop sop = fetchUop();
+
+			chain[i] = sop;
+
+			if(sop.can_jump)
+				break;
+		}
+
+		bank.pc_end = this.pc;
+		bank.load_cycles = this.cycles - lcyc;
+
+		this.pc = lpc;
+		this.cycles = lcyc;
+
+		tweakUopChain(lpc, bank.chain);
+
+		return bank;
+	}
+
+	private void tweakUopChain(int base_pc, SavedUop[] ul)
+	{
+		int[] pc_fw = new int[] {-1, -1, -1, -1};
+		int pc = base_pc;
+
+		// Get flag writes
+		for(int i = 0; i < ul.length; i++)
+		{
+			SavedUop sop = ul[i];
+
+			if(sop.can_jump)
+				break; // No jump operations write any flags
+
+			// Check for our two carry-reading opcodes
+			int op = (sop.uop>>24) & 0x7F;
+			if(op == UOP_RCL || op == UOP_RCR)
+				pc_fw[1] = -1;
+
+			short fm = opFlagWrites(op);
+
+			// Clear any previous writes that haven't been read
+			if((fm & (1<<0)) != 0) { if(pc_fw[0] != -1) { ul[pc_fw[0]].fmask &= ~(1<<0); } pc_fw[0] = i; }
+			if((fm & (1<<1)) != 1) { if(pc_fw[1] != -1) { ul[pc_fw[1]].fmask &= ~(1<<1); } pc_fw[1] = i; }
+			if((fm & (1<<2)) != 2) { if(pc_fw[2] != -1) { ul[pc_fw[2]].fmask &= ~(1<<2); } pc_fw[2] = i; }
+			if((fm & (1<<3)) != 3) { if(pc_fw[3] != -1) { ul[pc_fw[3]].fmask &= ~(1<<3); } pc_fw[3] = i; }
+
+			pc = sop.new_pc;
+		}
+
+		// Clear all
+	}
+
+	private SavedUop fetchUop()
+	{
+		int lpc = this.pc;
+			
+		int ocyc = this.cycles;
+		int uop_data = loadUop();
+		int ncyc = this.cycles;
+
+		int op = (uop_data>>24) & 0x7F;
+		int rx = (uop_data>>16) & 0x0F;
+
+		SavedUop sop = new SavedUop(uop_data, ncyc - ocyc, this.pc, (short)0xFFFF, opReturns(op, rx), opCanJump(op));
+
+		return sop;
+	}
+
 	private int waitCycles;
 	
 	public void wait(int cycles) {
 		waitCycles += cycles;
 	}
 	
-	public void run(int cycles) {
-		int startCycles = this.cycles;
-		for(; this.cycles < startCycles + cycles;) {
-			if(this.halted) {
-				if(debug) {
-					System.out.printf("HALT! ");
-					debugPC();
+	public boolean interrupt(int line) {
+		// TODO
+		return false;
+	}
+	
+	// Under profiling, Java says this is the bottleneck.
+	// doUop/doUopStep/loadUop might be getting inlined, though.
+	public int run(int count)
+	{
+		int cyc_end = count + this.cycles;
+
+		try
+		{
+			while((cyc_end - this.cycles) > 0)
+			{
+				if(waitCycles > 0) {
+					if((cyc_end - this.cycles) <= waitCycles) {
+						this.cycles += waitCycles;
+						waitCycles = 0;
+					} else {
+						int diff = cyc_end - this.cycles;
+						this.cycles = cyc_end;
+						waitCycles -= diff;
+					}
+				} else {
+					int lpc = this.pc;
+					SavedUopBank bank = fetchUopChain();
+					SavedUop[] uop_chain = bank.chain;
+					this.pc = bank.pc_end;
+	
+					for(int i = 0; i < uop_chain.length; i++)
+					{
+						SavedUop sop = uop_chain[i];
+	
+						this.cycles += sop.load_cycles;
+	
+						doUop(sop.uop, sop.fmask, sop.use_ret);
+	
+						if(sop.can_jump)
+							break;
+					}
 				}
-				return;
 			}
-			if(waitCycles > 0) {
-				if(waitCycles <= (this.cycles - startCycles - cycles)) { // Still enough time
-					this.cycles += waitCycles;
-					waitCycles = 0;
-				} else { // Not enough time
-					int cyclesLeft = (this.cycles - startCycles - cycles);
-					this.cycles += cyclesLeft;
-					waitCycles -= cyclesLeft;
-				}
-			}
-			doUOP(loadUOP());
-		}
+		} catch(HaltCPU _) {}
+
+		return cyc_end - this.cycles;
 	}
 }
 

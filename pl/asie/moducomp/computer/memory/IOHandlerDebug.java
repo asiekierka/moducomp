@@ -22,16 +22,9 @@ public class IOHandlerDebug implements IMemory
 	
 	public void write8(ICPU cpu, int addr, byte val)
 	{
-		if((addr & 0x200000) == 0)
-			/* do nothing */;
-		else {
-			addr &= 0xFF;
-			//System.out.printf("debug %02X %02X\n", addr, 0xFF & (int)val);
-			if(addr == 0xFE)
-			{
-				System.out.printf("%c", (char)(0xFF & (int)val));
-				System.out.flush();
-			}
+		if(addr == 0xFE)
+		{
+			System.out.write(val);
 		}
 	}
 

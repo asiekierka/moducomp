@@ -25,7 +25,7 @@ public class Tester
 		memctl.setSlot(0, ram);
 
 		double est_mhz = 0.0;
-		int runs = 100;
+		int runs = 400;
 		for(int i = 0; i < runs; i++)
 		{
 			System.out.printf("\nrun #%d\n", i);

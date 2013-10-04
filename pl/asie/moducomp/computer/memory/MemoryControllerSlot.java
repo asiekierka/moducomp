@@ -6,6 +6,7 @@ import pl.asie.moducomp.api.computer.IMemoryController;
 
 public class MemoryControllerSlot implements IMemoryController
 {
+	protected IMemory memorySlots[] = new IMemory[16];
 	protected IMemory slots[] = new IMemory[16];
 	protected IMemory deviceSlots[] = new IMemory[16];
 
@@ -14,6 +15,12 @@ public class MemoryControllerSlot implements IMemoryController
 
 	public void setSlot(int idx, IMemory slot) {
 		this.slots[idx] = slot;
+		if(idx == 0) {
+			this.memorySlots[0] = slot;
+			this.memorySlots[15] = slot;
+		} else if(idx <= 14) {
+			this.memorySlots[idx] = slot;
+		}
 	}
 	
 	public void setROM(IMemory slot) {
@@ -28,21 +35,14 @@ public class MemoryControllerSlot implements IMemoryController
 	{
 		addr &= 0xFFFFF;
 
-		// 48KB mirror of 0x00000
-		if(addr >= 0xF0000 && addr <= 0xFBFFF)
-			addr &= 0xFFFF;
-
-		int bank = (addr>>16);
-
-		if(bank < 0xF) {
-			IMemory slot = this.slots[bank];
+		if(addr < 0xFC000) {
+			IMemory slot = this.memorySlots[(addr >> 16) & 0xF];
 			return (slot == null ? (byte)0xFF : slot.read8(cpu, addr & 0xFFFF));
 		} else if(addr <= 0xFCFFF) { // Reserved
 			return (byte)0xFF;
 		} else if(addr <= 0xFDFFF) { // Devices
-			int subbank = (addr>>8) & 15;
-			IMemory slot = this.deviceSlots[subbank];
-			return (slot == null ? (byte)0xFF : slot.read8(cpu, (addr & 0xFF) | 0x200000));
+			IMemory slot = this.deviceSlots[(addr>>8) & 15];
+			return (slot == null ? (byte)0xFF : slot.read8(cpu, addr & 0xFF));
 		} else { // ROM
 			IMemory slot = this.slots[15];
 			return (slot == null ? (byte)0xFF : slot.read8(cpu, addr & 0x1FFF));
@@ -52,24 +52,17 @@ public class MemoryControllerSlot implements IMemoryController
 	public void write8(ICPU cpu, int addr, byte val)
 	{
 		addr &= 0xFFFFF;
-
-		// 48KB mirror
-		if(addr >= 0xF0000 && addr <= 0xFBFFF)
-			addr &= 0xFFFF;
-
-		int bank = (addr>>16);
 		
-		if(bank < 0xF) {
-			IMemory slot = this.slots[bank];
+		if(addr < 0xFC000) {
+			IMemory slot = this.memorySlots[(addr >> 16) & 0xF];
 			if(slot != null)
 				slot.write8(cpu, addr & 0xFFFF, val);
 		} else if(addr <= 0xFCFFF) { // Reserved
 			// Do nothing
 		} else if(addr <= 0xFDFFF) { // Devices
-			int subbank = (addr>>8) & 15;
-			IMemory slot = this.deviceSlots[subbank];
+			IMemory slot = this.deviceSlots[(addr>>8) & 15];
 			if(slot != null)
-				slot.write8(cpu, (addr & 0xFF) | 0x200000, val);
+				slot.write8(cpu, addr & 0xFF, val);
 		} else { // ROM
 			IMemory slot = this.slots[15];
 			if(slot != null)
