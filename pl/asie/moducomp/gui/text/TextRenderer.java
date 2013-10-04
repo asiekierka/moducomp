@@ -1,5 +1,8 @@
 package pl.asie.moducomp.gui.text;
 
+import org.lwjgl.opengl.GL11;
+
+import pl.asie.moducomp.ModularComputing;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.renderer.texture.TextureManager;
@@ -15,7 +18,9 @@ public class TextRenderer {
 	public static final int COLOR_WHITE = 1;
 	
 	public void drawLetter(Gui gui, TextureManager tm, int x, int y, int color, short chr) {
+		if(chr == 0) return;
 		ResourceLocation texture = textures[color % textures.length];
+        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
 		tm.bindTexture(texture);
 		gui.drawTexturedModalRect(x, y, (chr & 31)*8, (chr >> 5)*8, 8, 8);
 	}

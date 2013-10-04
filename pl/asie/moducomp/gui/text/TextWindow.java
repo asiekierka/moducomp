@@ -1,10 +1,12 @@
 package pl.asie.moducomp.gui.text;
 
+import pl.asie.moducomp.ModularComputing;
+
 public class TextWindow {
 	public static final int TAB_SIZE = 4;
 	public final int width, height;
 	private short[] display;
-	private int x,y;
+	public int x,y;
 	
 	public TextWindow(int width, int height) {
 		this.width = width;
@@ -19,6 +21,7 @@ public class TextWindow {
 		for(int i = (width*(height-1)); i<(width*height); i++) {
 			this.display[i] = 0;
 		}
+		this.y--;
 	}
 	
 	public void newline() {
@@ -50,6 +53,7 @@ public class TextWindow {
 	}
 	
 	public void print(short chr) {
+		ModularComputing.instance.logger.info("Printing character " + chr + "(x is "+this.x+", y is "+this.y+", x0y0 is "+this.display[0]+")");
 		this.display[this.x + (this.y * this.width)] = chr;
 		this.advance();
 	}
@@ -62,5 +66,9 @@ public class TextWindow {
 	
 	public short[] getCharArray() {
 		return this.display;
+	}
+	
+	public void setCharArray(short[] arr) {
+		this.display = arr;
 	}
 }

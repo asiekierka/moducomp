@@ -2,11 +2,15 @@ package pl.asie.moducomp.peripheral;
 
 import pl.asie.moducomp.api.computer.ICPU;
 import pl.asie.moducomp.api.computer.IMemory;
+import pl.asie.moducomp.block.TileEntityMainBoard;
 import pl.asie.moducomp.gui.text.TextWindow;
 
 public class IOHandlerDebugMC implements IMemory
 {	
-	public IOHandlerDebugMC() {
+	private TileEntityMainBoard board;
+	
+	public IOHandlerDebugMC(TileEntityMainBoard board) {
+		this.board = board;
 	}
 	
 	protected byte data[];
@@ -30,7 +34,10 @@ public class IOHandlerDebugMC implements IMemory
 			window.print((short)chr);
 			}
 		TODO - wait for GM to add asm.hrl */
-		//if(addr == 0xFE) window.print((short)((int)0xFF & val));
+		if(addr == 0xFE) {
+			//System.out.write(val);
+			board.sendAndPrint((short)((int)0xFF & val));
+		}
 	}
 
 	@Override

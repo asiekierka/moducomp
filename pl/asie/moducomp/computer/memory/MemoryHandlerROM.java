@@ -12,6 +12,10 @@ public class MemoryHandlerROM implements IMemory {
 		this.data = data;
 	}
 	
+	public MemoryHandlerROM(byte[] data) {
+		this(data.length, data);
+	}
+	
 	@Override
 	public byte read8(ICPU cpu, int addr) {
 		if(addr < 0 || addr >= this.size) return 0;

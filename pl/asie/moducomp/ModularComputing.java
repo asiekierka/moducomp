@@ -28,7 +28,7 @@ import cpw.mods.fml.common.network.*;
 import cpw.mods.fml.common.registry.GameRegistry;
 
 @Mod(modid="moducomp", name="Modular Computing", version="0.0.1")
-@NetworkMod(clientSideRequired=true)
+@NetworkMod(channels={"ModularC"}, clientSideRequired=true, packetHandler=NetworkHandler.class)
 public class ModularComputing {
 	public static final boolean DEBUG = true;
 	@Instance(value = "moducomp")
@@ -110,7 +110,7 @@ public class ModularComputing {
     	GameRegistry.registerCraftingHandler(new CraftingHandler());
     	
     	NetworkRegistry.instance().registerGuiHandler(this, new GuiHandler());
-    	NetworkRegistry.instance().registerChannel(new NetworkHandler(), "ModularC");
+    	//NetworkRegistry.instance().registerChannel(new NetworkHandler(), "ModularC");
     	
     	GameRegistry.addShapedRecipe(new ItemStack(itemPaperTape), " x ", "x x", " x ", 'x', Item.paper);
     	for(int i = 0; i < ItemPaperTape.MAX_TAPE_LENGTH; i++) { // TERIRBLE, TERRIBLE HACK! Adds 2048 recipes

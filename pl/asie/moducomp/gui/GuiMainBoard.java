@@ -8,10 +8,14 @@ import java.util.logging.Level;
 
 import org.lwjgl.opengl.GL11;
 
+import pl.asie.moducomp.ModularComputing;
+import pl.asie.moducomp.NetworkHandler;
 import pl.asie.moducomp.api.IItemTape;
 import pl.asie.moducomp.block.TileEntityMainBoard;
 import pl.asie.moducomp.block.TileEntityMusicBox;
 import pl.asie.moducomp.gui.text.TextRenderer;
+import pl.asie.moducomp.gui.text.TextWindow;
+import pl.asie.moducomp.item.ItemPaperTape;
 import pl.asie.moducomp.lib.ContainerInventory;
 import pl.asie.moducomp.lib.GuiInventory;
 import pl.asie.moducomp.lib.TileEntityInventory;
@@ -20,6 +24,7 @@ import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.network.packet.Packet250CustomPayload;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ResourceLocation;
 import cpw.mods.fml.common.network.PacketDispatcher;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -29,9 +34,13 @@ import cpw.mods.fml.relauncher.Side;
 public class GuiMainBoard extends GuiInventory
 {
 	private TextRenderer textRenderer = new TextRenderer();
+	public TextWindow window;
+	public static GuiMainBoard instance; // I'm going to die for this one.
 	
 	public GuiMainBoard(InventoryPlayer inventoryPlayer, TileEntityInventory tileEntity, ContainerInventory inventory, int xs, int ys, String textureName) {
 		super(inventoryPlayer, tileEntity, inventory, xs, ys, textureName);
+		PacketDispatcher.sendPacketToServer(sendGetWindowPacket());
+		this.instance = this;
 	}
 
     /**
@@ -39,6 +48,36 @@ public class GuiMainBoard extends GuiInventory
      */
     protected void drawGuiContainerForegroundLayer(int par1, int par2)
     {
+    }
+    
+    private Packet250CustomPayload sendTurnOnPacket() {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream(32);
+        DataOutputStream os = new DataOutputStream(bos);
+        try {
+        	NetworkHandler.prefixTileEntity(this.tileEntity, os);
+            os.writeByte(1);
+            os.writeBoolean(true);
+        } catch(Exception e) { e.printStackTrace(); }
+        return new Packet250CustomPayload("ModularC", bos.toByteArray());
+    }
+    
+    private Packet250CustomPayload sendGetWindowPacket() {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream(32);
+        DataOutputStream os = new DataOutputStream(bos);
+        try {
+        	NetworkHandler.prefixTileEntity(this.tileEntity, os);
+            os.writeByte(2);
+        } catch(Exception e) { e.printStackTrace(); }
+        return new Packet250CustomPayload("ModularC", bos.toByteArray());
+    }
+    
+    @Override
+    protected void keyTyped(char keyChar, int key)
+    {
+    	super.keyTyped(keyChar, key);
+        if(key == 200) { // Press UP to play (TODO MAKE THIS REAL)
+        	PacketDispatcher.sendPacketToServer(sendTurnOnPacket());
+        }
     }
     
     /**
@@ -51,6 +90,6 @@ public class GuiMainBoard extends GuiInventory
         super.drawGuiContainerBackgroundLayer(par1, par2, par3);
         int xo = (this.width - this.xSize) / 2;
         int yo = (this.height - this.ySize) / 2;
-        textRenderer.renderWindow(this, this.mc.getTextureManager(), mb.window, xo+11, yo+43, TextRenderer.COLOR_WHITE);
+        if(window != null) textRenderer.renderWindow(this, this.mc.getTextureManager(), window, xo+11, yo+43, TextRenderer.COLOR_WHITE);
     }
 }
