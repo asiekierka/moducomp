@@ -1,5 +1,9 @@
+import java.util.*;
+
 public class CPU
 {
+	private class HaltCPU extends Exception {}
+
 	// RULES FOR ACCESSING THE CYCLES VARIABLE:
 	// - Increment this if you need extra wait states for read access.
 	//   The CPU will increment it by 1 each read.
@@ -54,6 +58,37 @@ public class CPU
 	private boolean open_hatch;
 	private short regs[] = new short[16];
 	private byte intregs[] = new byte[128];
+
+	private class SavedUop
+	{
+		public final int uop;
+		public final byte load_cycles;
+		public final short fmask;
+		public final int new_pc;
+		public final boolean use_ret;
+		public final boolean can_jump;
+
+		public SavedUop(int uop, int load_cycles, int new_pc, short fmask, boolean use_ret, boolean can_jump)
+		{
+			this.uop = uop;
+			this.load_cycles = (byte)load_cycles;
+			this.new_pc = new_pc;
+			this.fmask = fmask;
+			this.use_ret = use_ret;
+			this.can_jump = can_jump;
+		}
+	}
+
+	private class SavedUopChain
+	{
+		// TODO.
+		public int new_pc;
+		public int load_cycles;
+		public SavedUop[] ops;
+	}
+
+	//private HashMap<Integer, SavedUop> uop_list = new HashMap<Integer, SavedUop>();
+	private SavedUop[] uop_list = new SavedUop[0x100000];
 
 	public CPU(Memory memctl)
 	{
@@ -146,12 +181,27 @@ public class CPU
 		this.warm_reset();
 	}
 
-	public void run_until_halt()
+	public void runUntilHalt()
 	{
-		this.doCycle();
+		this.doCycles(1000000000);
+
+		if(false)
+		{
+			System.out.printf("HALT %05X:", this.pc);
+			System.out.printf(" %04X", 0xFFFF & (int)this.flags);
+			for(int i = 1; i < 16; i++)
+				System.out.printf(" %04X", 0xFFFF & (int)this.regs[i]);
+			System.out.println();
+		}
 	}
 
-	private int loadUOP()
+	public void clearUops()
+	{
+		//uop_list.clear();
+		for(int i = 0; i < uop_list.length; i++) uop_list[i] = null;
+	}
+
+	private int loadUop()
 	{
 		int op = 0xFF & (int)this.fetch8();
 
@@ -315,18 +365,14 @@ public class CPU
 
 	private void setParityFlag(short val)
 	{
-		int sum = 0;
-
-		for(int i = 0; i < 16; i++)
-		{
-			sum += (val & 1);
-			val >>= 1;
-		}
-
-		this.setFlag(F_OVERFLOW, (val & 1) != 0);
+		byte v = (byte)(val^(val>>8));
+		v ^= (v>>4);
+		v ^= (v>>2);
+		v ^= (v>>1);
+		this.setFlag(F_OVERFLOW, (v & 1) != 0);
 	}
 
-	private short doUOPStep(int size, int op, int rx, int ry, int imm)
+	private short doUopStep(int size, int op, int rx, int ry, int imm, short fmask) throws HaltCPU
 	{
 		if(op >= UOP_JZ && op <= UOP_JSR)
 		{
@@ -344,21 +390,24 @@ public class CPU
 				int vx = 0xFFFF & (int)this.regs[rx];
 				int vy = (ry == 0 ? imm : 0xFFFF & (int)this.regs[ry]);
 				int ret = vx - vy;
-				this.setFlag(F_CARRY, vx < vy);
-				this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
-				this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
-				if (((vx ^ vy) & (size == 2 ? 0x8000 : 0x0080)) == 0)
+				if((fmask & F_CARRY) != 0) this.setFlag(F_CARRY, vx < vy);
+				if((fmask & F_ZERO) != 0) this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
+				if((fmask & F_SIGNED) != 0) this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
+				if((fmask & F_OVERFLOW) != 0)
 				{
-					// same signs
-					int aimm = (vy < 0x8000 ? vy :  0x10000-vy);
-					int axval = (vx < 0x8000 ? vx : 0x10000-vx);
-					if(size == 2)
-						this.setFlag(F_OVERFLOW, aimm + axval >= 0x8000);
-					else
-						this.setFlag(F_OVERFLOW, aimm + axval >= 0x80);
-				} else {
-					// differing signs
-					this.setFlag(F_OVERFLOW, false);
+					if (((vx ^ vy) & (size == 2 ? 0x8000 : 0x0080)) == 0)
+					{
+						// same signs
+						int aimm = (vy < 0x8000 ? vy :  0x10000-vy);
+						int axval = (vx < 0x8000 ? vx : 0x10000-vx);
+						if(size == 2)
+							if((fmask & F_OVERFLOW) != 0) this.setFlag(F_OVERFLOW, aimm + axval >= 0x8000);
+						else
+							if((fmask & F_OVERFLOW) != 0) this.setFlag(F_OVERFLOW, aimm + axval >= 0x80);
+					} else {
+						// differing signs
+						if((fmask & F_OVERFLOW) != 0) this.setFlag(F_OVERFLOW, false);
+					}
 				}
 
 				if(op != UOP_CMP)
@@ -368,21 +417,24 @@ public class CPU
 				int vx = 0xFFFF & (int)this.regs[rx];
 				int vy = (ry == 0 ? imm : 0xFFFF & (int)this.regs[ry]);
 				int ret = vx + vy;
-				this.setFlag(F_CARRY, (size == 2 ? ret >= 0x10000 : ret >= 0x100));
-				this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
-				this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
-				if (((vx ^ vy) & (size == 2 ? 0x8000 : 0x0080)) == 0)
+				if((fmask & F_CARRY) != 0) this.setFlag(F_CARRY, (size == 2 ? ret >= 0x10000 : ret >= 0x100));
+				if((fmask & F_ZERO) != 0) this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
+				if((fmask & F_SIGNED) != 0) this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
+				if((fmask & F_OVERFLOW) != 0)
 				{
-					// same signs
-					int aimm = (vy < 0x8000 ? vy :  0x10000-vy);
-					int axval = (vx < 0x8000 ? vx : 0x10000-vx);
-					if(size == 2)
-						this.setFlag(F_OVERFLOW, aimm + axval >= 0x8000);
-					else
-						this.setFlag(F_OVERFLOW, aimm + axval >= 0x80);
-				} else {
-					// differing signs
-					this.setFlag(F_OVERFLOW, false);
+					if (((vx ^ vy) & (size == 2 ? 0x8000 : 0x0080)) == 0)
+					{
+						// same signs
+						int aimm = (vy < 0x8000 ? vy :  0x10000-vy);
+						int axval = (vx < 0x8000 ? vx : 0x10000-vx);
+						if(size == 2)
+							if((fmask & F_OVERFLOW) != 0) this.setFlag(F_OVERFLOW, aimm + axval >= 0x8000);
+						else
+							if((fmask & F_OVERFLOW) != 0) this.setFlag(F_OVERFLOW, aimm + axval >= 0x80);
+					} else {
+						// differing signs
+						if((fmask & F_OVERFLOW) != 0) this.setFlag(F_OVERFLOW, false);
+					}
 				}
 
 				if(op != UOP_CMP)
@@ -392,18 +444,18 @@ public class CPU
 				int vx = this.regs[rx];
 				int vy = (ry == 0 ? imm : this.regs[ry]);
 				int ret = vx ^ vy;
-				this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
-				this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
-				this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
+				if((fmask & F_OVERFLOW) != 0) this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
+				if((fmask & F_SIGNED) != 0) this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
+				if((fmask & F_ZERO) != 0) this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
 				return (short)ret;
 			} //break;
 			case UOP_OR: {
 				int vx = this.regs[rx];
 				int vy = (ry == 0 ? imm : this.regs[ry]);
 				int ret = vx | vy;
-				this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
-				this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
-				this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
+				if((fmask & F_OVERFLOW) != 0) this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
+				if((fmask & F_SIGNED) != 0) this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
+				if((fmask & F_ZERO) != 0) this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
 				return (short)ret;
 			} //break;
 			case UOP_AND: {
@@ -412,19 +464,19 @@ public class CPU
 				if(size == 1)
 					vy |= 0xFF00;
 				int ret = vx & vy;
-				this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
-				this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
-				this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
+				if((fmask & F_OVERFLOW) != 0) this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
+				if((fmask & F_SIGNED) != 0) this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
+				if((fmask & F_ZERO) != 0) this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
 				return (short)ret;
 			} //break;
 			case UOP_ASL: {
 				int vx = 0xFFFF & (int)this.regs[rx];
 				int vy = (ry == 0 ? imm : this.regs[ry]) & 0xF;
 				int ret = vx << vy;
-				this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
-				this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
-				this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
-				this.setFlag(F_CARRY, (ret & 0x10000) != 0);
+				if((fmask & F_OVERFLOW) != 0) this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
+				if((fmask & F_SIGNED) != 0) this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
+				if((fmask & F_ZERO) != 0) this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
+				if((fmask & F_CARRY) != 0) this.setFlag(F_CARRY, (ret & 0x10000) != 0);
 				return (short)ret;
 			} //break;
 			case UOP_ASR: {
@@ -432,10 +484,10 @@ public class CPU
 				int vy = (ry == 0 ? imm : this.regs[ry]) & 0xF;
 				int ret = vx >> vy;
 				int retpre = (vy == 0 ? vx << 1 : vx >> (vy-1));
-				this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
-				this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
-				this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
-				this.setFlag(F_CARRY, (retpre & 0x0001) != 0);
+				if((fmask & F_OVERFLOW) != 0) this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
+				if((fmask & F_SIGNED) != 0) this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
+				if((fmask & F_ZERO) != 0) this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
+				if((fmask & F_CARRY) != 0) this.setFlag(F_CARRY, (retpre & 0x0001) != 0);
 				return (short)ret;
 			} //break;
 			case UOP_LSR: {
@@ -443,10 +495,10 @@ public class CPU
 				int vy = (ry == 0 ? imm : this.regs[ry]) & 0xF;
 				int ret = vx >>> vy;
 				int retpre = (vy == 0 ? vx << 1 : vx >>> (vy-1));
-				this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
-				this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
-				this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
-				this.setFlag(F_CARRY, (retpre & 0x0001) != 0);
+				if((fmask & F_OVERFLOW) != 0) this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
+				if((fmask & F_SIGNED) != 0) this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
+				if((fmask & F_ZERO) != 0) this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
+				if((fmask & F_CARRY) != 0) this.setFlag(F_CARRY, (retpre & 0x0001) != 0);
 				return (short)ret;
 			} //break;
 			case UOP_JZ:
@@ -506,7 +558,8 @@ public class CPU
 				break;
 			case UOP_HLT:
 				this.halted = true;
-				break;
+				throw new HaltCPU();
+				//break;
 			default:
 				if((op & 0x40) != 0)
 				{
@@ -539,7 +592,7 @@ public class CPU
 		return this.regs[rx];
 	}
 
-	private void doUOP(int uop_data)
+	private void doUop(int uop_data, short fmask, boolean use_ret) throws HaltCPU
 	{
 		int size = ((uop_data>>31) & 1) + 1;
 		int op = (uop_data>>24) & 0x7F;
@@ -547,8 +600,9 @@ public class CPU
 		int ry = (uop_data>>20) & 0x0F;
 		int imm = (uop_data) & 0xFFFF;
 
-		short ret = doUOPStep(size, op, rx, ry, imm);
-		if(rx != 0)
+		short ret = doUopStep(size, op, rx, ry, imm, fmask);
+
+		if(use_ret)
 		{
 			if(size == 2)
 				this.regs[rx] = ret;
@@ -557,31 +611,78 @@ public class CPU
 		}
 	}
 
-	public void doCycle()
+	private boolean opCanJump(int op)
 	{
-		while(!this.halted)
-		{
-			int lpc = this.pc;
-			int uop_data = loadUOP();
-			if(false)
-			{
-				System.out.printf("%05X %08X:", lpc, uop_data);
-				System.out.printf(" %04X", 0xFFFF & (int)this.flags);
-				for(int i = 1; i < 16; i++)
-					System.out.printf(" %04X", 0xFFFF & (int)this.regs[i]);
-				System.out.println();
-			}
-			doUOP(uop_data);
-		}
+		return (op >= UOP_JZ && op <= UOP_JSR) || op == UOP_RET;
+	}
 
-		if(true)
+	private boolean opReturns(int op, int rx)
+	{
+		if(rx == 0)
+			return false;
+
+		if(op >= UOP_MOVE && op <= UOP_RCL)
 		{
-			System.out.printf("HALT %05X:", this.pc);
-			System.out.printf(" %04X", 0xFFFF & (int)this.flags);
-			for(int i = 1; i < 16; i++)
-				System.out.printf(" %04X", 0xFFFF & (int)this.regs[i]);
-			System.out.println();
+			return true; // TODO: actually check these
+		} else if(op >= UOP_JZ && op <= UOP_HLT) {
+			return false;
+		} else {
+			return true;
 		}
+	}
+
+	// Under profiling, Java says this is the bottleneck.
+	// doUop/doUopStep/loadUop might be getting inlined, though.
+	public int doCycles(int count)
+	{
+		count += this.cycles;
+
+		try
+		{
+			while((count - this.cycles) > 0)
+			{
+				int lpc = this.pc;
+				//SavedUop uop_cached = this.uop_list.get((Integer)lpc);
+				SavedUop uop_cached = this.uop_list[lpc];
+				if(uop_cached == null)
+				{
+					int ocyc = this.cycles;
+					int uop_data = loadUop();
+					int ncyc = this.cycles;
+
+					int op = (uop_data>>24) & 0x7F;
+					int rx = (uop_data>>16) & 0x0F;
+
+					// pick one:
+
+					// more accurate
+					uop_cached = new SavedUop(uop_data, ncyc - ocyc, this.pc, (short)0xFFFF, opReturns(op, rx), opCanJump(op));
+
+					// faster, but OVERFLOW and SIGNED cannot be used
+					// ultimately we must work out which flags we actually care about
+					//uop_cached = new SavedUop(uop_data, ncyc - ocyc, this.pc, (short)(F_ZERO | F_CARRY), opReturns(op, rx), opCanJump(op));
+
+					//this.uop_list.put((Integer)lpc, uop_cached);
+					this.uop_list[lpc] = uop_cached;
+				} else {
+					this.cycles += uop_cached.load_cycles;
+					this.pc = uop_cached.new_pc;
+				}
+
+				if(false)
+				{
+					System.out.printf("%05X %08X:", lpc, uop_cached.uop);
+					System.out.printf(" %04X", 0xFFFF & (int)this.flags);
+					for(int i = 1; i < 16; i++)
+						System.out.printf(" %04X", 0xFFFF & (int)this.regs[i]);
+					System.out.println();
+				}
+
+				doUop(uop_cached.uop, uop_cached.fmask, uop_cached.use_ret);
+			}
+		} catch(HaltCPU _) {}
+
+		return this.cycles - count;
 	}
 }
 
