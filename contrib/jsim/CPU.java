@@ -87,8 +87,7 @@ public class CPU
 		public SavedUop[] ops;
 	}
 
-	//private HashMap<Integer, SavedUop> uop_list = new HashMap<Integer, SavedUop>();
-	private SavedUop[] uop_list = new SavedUop[0x100000];
+	private SavedUop[][] uop_list = new SavedUop[0x100][];
 
 	public CPU(Memory memctl)
 	{
@@ -642,10 +641,13 @@ public class CPU
 			while((count - this.cycles) > 0)
 			{
 				int lpc = this.pc;
-				//SavedUop uop_cached = this.uop_list.get((Integer)lpc);
-				SavedUop uop_cached = this.uop_list[lpc];
+				SavedUop[] uop_bank = this.uop_list[lpc>>12];
+				SavedUop uop_cached = (uop_bank == null ? null : uop_bank[lpc&0xFFF]);
 				if(uop_cached == null)
 				{
+					if(uop_bank == null)
+						uop_bank = this.uop_list[lpc>>12] = new SavedUop[0x1000];
+						
 					int ocyc = this.cycles;
 					int uop_data = loadUop();
 					int ncyc = this.cycles;
@@ -662,8 +664,7 @@ public class CPU
 					// ultimately we must work out which flags we actually care about
 					//uop_cached = new SavedUop(uop_data, ncyc - ocyc, this.pc, (short)(F_ZERO | F_CARRY), opReturns(op, rx), opCanJump(op));
 
-					//this.uop_list.put((Integer)lpc, uop_cached);
-					this.uop_list[lpc] = uop_cached;
+					uop_bank[lpc&0xFFF] = uop_cached;
 				} else {
 					this.cycles += uop_cached.load_cycles;
 					this.pc = uop_cached.new_pc;
