@@ -61,12 +61,12 @@ public class CPU
 
 	private class SavedUop
 	{
-		public final int uop;
-		public final byte load_cycles;
-		public final short fmask;
-		public final int new_pc;
-		public final boolean use_ret;
-		public final boolean can_jump;
+		public int uop;
+		public byte load_cycles;
+		public short fmask;
+		public int new_pc;
+		public boolean use_ret;
+		public boolean can_jump;
 
 		public SavedUop(int uop, int load_cycles, int new_pc, short fmask, boolean use_ret, boolean can_jump)
 		{
@@ -79,15 +79,16 @@ public class CPU
 		}
 	}
 
-	private class SavedUopChain
+	private class SavedUopBank
 	{
-		// TODO.
-		public int new_pc;
+		public int pc_start, pc_end;
 		public int load_cycles;
-		public SavedUop[] ops;
+		public SavedUop[] chain;
 	}
 
-	private SavedUop[][] uop_list = new SavedUop[0x100][];
+	private SavedUopBank[] uop_cache = new SavedUopBank[8];
+	{ for(int i = 0; i < uop_cache.length; i++) { uop_cache[i] = new SavedUopBank(); uop_cache[i].chain = new SavedUop[64]; uop_cache[i].pc_start = -1; } }
+	private int uop_cache_ptr = 0;
 
 	public CPU(Memory memctl)
 	{
@@ -196,8 +197,8 @@ public class CPU
 
 	public void clearUops()
 	{
-		//uop_list.clear();
-		for(int i = 0; i < uop_list.length; i++) uop_list[i] = null;
+		for(int i = 0; i < uop_cache.length; i++)
+			uop_cache[i].pc_start = -1;
 	}
 
 	private int loadUop()
@@ -610,6 +611,20 @@ public class CPU
 		}
 	}
 
+	private short opFlagWrites(int op)
+	{
+		if(op >= UOP_CMP && op <= UOP_SUB)
+			return (short)(F_ZERO | F_SIGNED | F_OVERFLOW | F_CARRY);
+		else if(op >= UOP_XOR && op <= UOP_AND)
+			return (short)(F_ZERO | F_SIGNED | F_OVERFLOW);
+		else if(op >= UOP_ASL && op <= UOP_RCR)
+			return (short)(F_ZERO | F_SIGNED | F_OVERFLOW | F_CARRY);
+		else if(op == UOP_POPF)
+			return (short)0xFFFF;
+		else
+			return 0;
+	}
+
 	private boolean opCanJump(int op)
 	{
 		return (op >= UOP_JZ && op <= UOP_JSR) || op == UOP_RET;
@@ -630,10 +645,99 @@ public class CPU
 		}
 	}
 
+	private SavedUopBank fetchUopChain()
+	{
+		SavedUopBank bank = null;
+		int lpc = this.pc;
+		int lcyc = this.cycles;
+
+		for(int i = 0; i < uop_cache.length; i++)
+		{
+			bank = uop_cache[i];
+			if(bank.pc_start == lpc)
+				return bank;
+		}
+
+		bank = uop_cache[this.uop_cache_ptr];
+		this.uop_cache_ptr = (this.uop_cache_ptr+1) & (uop_cache.length-1);
+		SavedUop[] chain = bank.chain;
+		bank.pc_start = lpc;
+
+		for(int i = 0; i < chain.length; i++)
+		{
+			SavedUop sop = fetchUop();
+
+			chain[i] = sop;
+
+			if(sop.can_jump)
+				break;
+		}
+
+		bank.pc_end = this.pc;
+		bank.load_cycles = this.cycles - lcyc;
+
+		this.pc = lpc;
+		this.cycles = lcyc;
+
+		tweakUopChain(lpc, bank.chain);
+
+		return bank;
+	}
+
+	private void tweakUopChain(int base_pc, SavedUop[] ul)
+	{
+		int[] pc_fw = new int[] {-1, -1, -1, -1};
+		int pc = base_pc;
+
+		// Get flag writes
+		for(int i = 0; i < ul.length; i++)
+		{
+			SavedUop sop = ul[i];
+
+			if(sop.can_jump)
+				break; // No jump operations write any flags
+
+			// Check for our two carry-reading opcodes
+			int op = (sop.uop>>24) & 0x7F;
+			if(op == UOP_RCL || op == UOP_RCR)
+				pc_fw[1] = -1;
+
+			short fm = opFlagWrites(op);
+
+			// Clear any previous writes that haven't been read
+			if((fm & (1<<0)) != 0) { if(pc_fw[0] != -1) { ul[pc_fw[0]].fmask &= ~(1<<0); } pc_fw[0] = i; }
+			if((fm & (1<<1)) != 1) { if(pc_fw[1] != -1) { ul[pc_fw[1]].fmask &= ~(1<<1); } pc_fw[1] = i; }
+			if((fm & (1<<2)) != 2) { if(pc_fw[2] != -1) { ul[pc_fw[2]].fmask &= ~(1<<2); } pc_fw[2] = i; }
+			if((fm & (1<<3)) != 3) { if(pc_fw[3] != -1) { ul[pc_fw[3]].fmask &= ~(1<<3); } pc_fw[3] = i; }
+
+			pc = sop.new_pc;
+		}
+
+		// Clear all
+	}
+
+	private SavedUop fetchUop()
+	{
+		int lpc = this.pc;
+			
+		int ocyc = this.cycles;
+		int uop_data = loadUop();
+		int ncyc = this.cycles;
+
+		int op = (uop_data>>24) & 0x7F;
+		int rx = (uop_data>>16) & 0x0F;
+
+		SavedUop sop = new SavedUop(uop_data, ncyc - ocyc, this.pc, (short)0xFFFF, opReturns(op, rx), opCanJump(op));
+
+		return sop;
+	}
+
 	// Under profiling, Java says this is the bottleneck.
 	// doUop/doUopStep/loadUop might be getting inlined, though.
 	public int doCycles(int count)
 	{
+		int pc_chain_start = 0;
+
 		count += this.cycles;
 
 		try
@@ -641,45 +745,30 @@ public class CPU
 			while((count - this.cycles) > 0)
 			{
 				int lpc = this.pc;
-				SavedUop[] uop_bank = this.uop_list[lpc>>12];
-				SavedUop uop_cached = (uop_bank == null ? null : uop_bank[lpc&0xFFF]);
-				if(uop_cached == null)
+				SavedUopBank bank = fetchUopChain();
+				SavedUop[] uop_chain = bank.chain;
+				this.pc = bank.pc_end;
+
+				for(int i = 0; i < uop_chain.length; i++)
 				{
-					if(uop_bank == null)
-						uop_bank = this.uop_list[lpc>>12] = new SavedUop[0x1000];
-						
-					int ocyc = this.cycles;
-					int uop_data = loadUop();
-					int ncyc = this.cycles;
+					SavedUop sop = uop_chain[i];
 
-					int op = (uop_data>>24) & 0x7F;
-					int rx = (uop_data>>16) & 0x0F;
+					if(false)
+					{
+						System.out.printf("%05X %08X:", sop.new_pc, sop.uop);
+						System.out.printf(" %04X", 0xFFFF & (int)this.flags);
+						for(int j = 1; j < 16; j++)
+							System.out.printf(" %04X", 0xFFFF & (int)this.regs[j]);
+						System.out.println();
+					}
 
-					// pick one:
+					this.cycles += sop.load_cycles;
 
-					// more accurate
-					uop_cached = new SavedUop(uop_data, ncyc - ocyc, this.pc, (short)0xFFFF, opReturns(op, rx), opCanJump(op));
+					doUop(sop.uop, sop.fmask, sop.use_ret);
 
-					// faster, but OVERFLOW and SIGNED cannot be used
-					// ultimately we must work out which flags we actually care about
-					//uop_cached = new SavedUop(uop_data, ncyc - ocyc, this.pc, (short)(F_ZERO | F_CARRY), opReturns(op, rx), opCanJump(op));
-
-					uop_bank[lpc&0xFFF] = uop_cached;
-				} else {
-					this.cycles += uop_cached.load_cycles;
-					this.pc = uop_cached.new_pc;
+					if(sop.can_jump)
+						break;
 				}
-
-				if(false)
-				{
-					System.out.printf("%05X %08X:", lpc, uop_cached.uop);
-					System.out.printf(" %04X", 0xFFFF & (int)this.flags);
-					for(int i = 1; i < 16; i++)
-						System.out.printf(" %04X", 0xFFFF & (int)this.regs[i]);
-					System.out.println();
-				}
-
-				doUop(uop_cached.uop, uop_cached.fmask, uop_cached.use_ret);
 			}
 		} catch(HaltCPU _) {}
 
