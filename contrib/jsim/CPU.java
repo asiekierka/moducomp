@@ -181,6 +181,11 @@ public class CPU
 		this.warm_reset();
 	}
 
+	public boolean isHalted()
+	{
+		return this.halted;
+	}
+
 	public void runUntilHalt()
 	{
 		this.doCycles(1000000000);
@@ -736,13 +741,11 @@ public class CPU
 	// doUop/doUopStep/loadUop might be getting inlined, though.
 	public int doCycles(int count)
 	{
-		int pc_chain_start = 0;
-
-		count += this.cycles;
+		int cyc_end = count + this.cycles;
 
 		try
 		{
-			while((count - this.cycles) > 0)
+			while((cyc_end - this.cycles) > 0)
 			{
 				int lpc = this.pc;
 				SavedUopBank bank = fetchUopChain();
@@ -772,7 +775,7 @@ public class CPU
 			}
 		} catch(HaltCPU _) {}
 
-		return this.cycles - count;
+		return cyc_end - this.cycles;
 	}
 }
 

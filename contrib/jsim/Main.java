@@ -27,7 +27,26 @@ public class Main
 			cpu.cycles = 0;
 			cpu.clearUops();
 			long t_start = System.nanoTime();
-			cpu.runUntilHalt();
+			long t_next = t_start;
+			//int cycs_add = 2000000/20; // 2MHz
+			int cycs_add = 1000000000; // Pretty much as fast as you like.
+			int cycs = 0;
+			while(true)
+			{
+				cycs += cycs_add;
+				int cycoffs = cpu.doCycles(cycs);
+				cycs = cycoffs;
+
+				if(cpu.isHalted())
+					break;
+
+				long t_now = System.nanoTime();
+				t_next += 1000000000L/20L;
+				int t_diff = (int)((t_next - t_now) / 1000000L);
+
+				if(t_diff > 0)
+					try{Thread.sleep(t_diff);}catch(Exception _){}
+			}
 			long t_end = System.nanoTime();
 			int t_total = (int)((t_end - t_start)/1000);
 			double t_total_f = t_total/1000000.0;
