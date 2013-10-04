@@ -25,7 +25,7 @@ import cpw.mods.fml.relauncher.Side;
 @SideOnly(Side.CLIENT)
 public class GuiInventory extends GuiContainer
 {
-    private ResourceLocation texture;
+    private final ResourceLocation texture;
     private ContainerInventory inventory;
     private TileEntityInventory tileEntity;
 

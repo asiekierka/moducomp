@@ -3,6 +3,7 @@ package pl.asie.moducomp;
 import java.util.logging.Logger;
 
 import pl.asie.moducomp.block.BlockMachine;
+import pl.asie.moducomp.block.BlockMainBoard;
 import pl.asie.moducomp.block.BlockMusicBox;
 import pl.asie.moducomp.block.BlockRAMBoard;
 import pl.asie.moducomp.block.BlockTapeReader;
@@ -36,6 +37,7 @@ public class ModularComputing {
 	public BlockTapeReader blockTapeReader;
 	public BlockMusicBox blockMusicBox;
 	public BlockRAMBoard blockRAMBoard;
+	public BlockMainBoard blockMainBoard;
 	public ItemPaperTape itemPaperTape;
 	public ItemRAM itemRAM;
 	public ItemCPUAreia itemCPUAreia;
@@ -86,6 +88,7 @@ public class ModularComputing {
     	blockTapeReader = (BlockTapeReader) registerBlock(BlockTapeReader.class, "moducomp.tape_reader", 1920);
     	blockMusicBox = (BlockMusicBox) registerBlock(BlockMusicBox.class, "moducomp.music_box", 1921);
     	blockRAMBoard = (BlockRAMBoard) registerBlock(BlockRAMBoard.class, "moducomp.ram_board", 1922);
+    	blockMainBoard = (BlockMainBoard) registerBlock(BlockMainBoard.class, "moducomp:main_board", 1923);
     	
     	itemPaperTape = (ItemPaperTape) registerItem(ItemPaperTape.class, "moducomp.paper_tape", 19200);
     	itemRAM = (ItemRAM) registerItem(ItemRAM.class, "moducomp.ram", 19201);
