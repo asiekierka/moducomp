@@ -3,6 +3,7 @@ package pl.asie.moducomp;
 import java.io.*;
 import java.util.*;
 
+import pl.asie.moducomp.block.TileEntityMainBoard;
 import pl.asie.moducomp.block.TileEntityTapeReader;
 import net.minecraft.src.*;
 import net.minecraft.entity.player.EntityPlayer;
@@ -53,7 +54,6 @@ public class NetworkHandler implements IPacketHandler {
 	        if(tileEntity instanceof TileEntityTapeReader) {
 	        	TileEntityTapeReader tapeReader = (TileEntityTapeReader)tileEntity;
 	        	int commandID = packetData.readUnsignedByte();
-	        	ModularComputing.debug("Received command ID #"+commandID+"!");
 	        	switch(commandID) {
 	        		case 1: { // Set bit
 	                	tapeReader.setBit(packetData.readInt(), packetData.readByte(), packetData.readByte());
@@ -61,6 +61,25 @@ public class NetworkHandler implements IPacketHandler {
 	        		case 2: { // Set position
 	        			tapeReader.setPosition(packetData.readInt());
 	        		} break;
+	        	}
+	        } else if(tileEntity instanceof TileEntityMainBoard) {
+	        	TileEntityMainBoard mainBoard = (TileEntityMainBoard)tileEntity;
+	        	int commandID = packetData.readUnsignedByte();
+	        	if(mainBoard.worldObj.isRemote) { // Server -> Client
+	        		switch(commandID) {
+	        			case 1: { // Print character
+	        				mainBoard.window.print(packetData.readShort());
+	        			} break;
+	        		}
+	        	} else { // Client -> Server
+	        		switch(commandID) {
+	        			case 1: { // Start/stop CPU
+	        				boolean should = packetData.readBoolean();
+	        				if(should) {
+	        					mainBoard.begin();
+	        				} else mainBoard.end();
+	        			} break;
+	        		}
 	        	}
 	        }
 		} catch(Exception e) { e.printStackTrace(); }

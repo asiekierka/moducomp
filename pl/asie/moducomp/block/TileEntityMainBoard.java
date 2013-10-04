@@ -1,13 +1,12 @@
 package pl.asie.moducomp.block;
 
-import java.awt.Container;
-
 import pl.asie.moducomp.api.IItemMemory;
 import pl.asie.moducomp.api.IMemoryControllerProvider;
 import pl.asie.moducomp.api.computer.ICPU;
 import pl.asie.moducomp.api.computer.IMemory;
 import pl.asie.moducomp.api.computer.IMemoryController;
 import pl.asie.moducomp.computer.memory.MemoryControllerSlot;
+import pl.asie.moducomp.gui.text.TextWindow;
 import pl.asie.moducomp.item.ItemPaperTape;
 import pl.asie.moducomp.lib.Helper;
 import pl.asie.moducomp.lib.TileEntityInventory;
@@ -19,8 +18,11 @@ import net.minecraft.world.World;
 
 public class TileEntityMainBoard extends TileEntityInventory implements Runnable
 {
+	public TextWindow window;
+	
 	public TileEntityMainBoard() {
 		super(1, 1, "block.moducomp.main_board");
+		this.window = new TextWindow(19, 7);
 	}
 	
 	public IMemoryController getMemoryController() {
@@ -42,7 +44,6 @@ public class TileEntityMainBoard extends TileEntityInventory implements Runnable
 		while(isRunning) {
 			long t_start = System.nanoTime() / 1000000;
 			int cyclesLeft = cpu.run(250000 / 20); // 250KHz TODO changeable
-			if(cyclesLeft > 0) isRunning = false;
 			long t_end = System.nanoTime() / 1000000;
 			try {
 				Thread.sleep(50 - (t_end - t_start));
