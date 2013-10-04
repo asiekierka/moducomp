@@ -1,4 +1,4 @@
-package pl.asie.moducomp.gui;
+package pl.asie.moducomp.gui.text;
 
 public class TextWindow {
 	public static final int TAB_SIZE = 4;

@@ -12,12 +12,7 @@ public class IOHandlerDebug implements IMemory
 
 	public byte read8(ICPU cpu, int addr)
 	{
-		if((addr & 0x200000) != 0)
-		{
-			return this.config[addr & 3];
-		} else {
-			return (byte)0xFF;
-		}
+		return this.config[addr & 3];
 	}
 	
 	public void write8(ICPU cpu, int addr, byte val)

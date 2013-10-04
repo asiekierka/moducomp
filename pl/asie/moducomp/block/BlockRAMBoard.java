@@ -4,6 +4,7 @@ import java.util.logging.Level;
 
 import pl.asie.moducomp.ModularComputing;
 import pl.asie.moducomp.lib.Helper;
+import pl.asie.moducomp.lib.ITileEntityOwner;
 import pl.asie.moducomp.lib.TileEntityInventory;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;

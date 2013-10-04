@@ -6,6 +6,7 @@ import java.util.logging.Level;
 import pl.asie.moducomp.ModularComputing;
 import pl.asie.moducomp.item.ItemPaperTape;
 import pl.asie.moducomp.lib.Helper;
+import pl.asie.moducomp.lib.ITileEntityOwner;
 import cpw.mods.fml.common.network.PacketDispatcher;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;

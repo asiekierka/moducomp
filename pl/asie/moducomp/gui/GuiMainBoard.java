@@ -11,6 +11,7 @@ import org.lwjgl.opengl.GL11;
 import pl.asie.moducomp.api.IItemTape;
 import pl.asie.moducomp.block.TileEntityMusicBox;
 import pl.asie.moducomp.lib.ContainerInventory;
+import pl.asie.moducomp.lib.GuiInventory;
 import pl.asie.moducomp.lib.TileEntityInventory;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.inventory.GuiContainer;
@@ -23,18 +24,10 @@ import cpw.mods.fml.relauncher.SideOnly;
 import cpw.mods.fml.relauncher.Side;
 
 @SideOnly(Side.CLIENT)
-public class GuiInventory extends GuiContainer
+public class GuiMainBoard extends GuiInventory
 {
-    private final ResourceLocation texture;
-    private ContainerInventory inventory;
-    private TileEntityInventory tileEntity;
-
-	public GuiInventory(InventoryPlayer inventoryPlayer, TileEntityInventory tileEntity, ContainerInventory inventory, int xs, int ys, String textureName) {
-		super(inventory);
-		this.tileEntity = tileEntity;
-		this.xSize = xs;
-		this.ySize = ys;
-		this.texture  = new ResourceLocation("moducomp", "textures/gui/" + textureName + ".png");
+	public GuiMainBoard(InventoryPlayer inventoryPlayer, TileEntityInventory tileEntity, ContainerInventory inventory, int xs, int ys, String textureName) {
+		super(inventoryPlayer, tileEntity, inventory, xs, ys, textureName);
 	}
 
     /**
@@ -49,10 +42,6 @@ public class GuiInventory extends GuiContainer
      */
     protected void drawGuiContainerBackgroundLayer(float par1, int par2, int par3)
     {
-        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
-        this.mc.getTextureManager().bindTexture(texture);
-        int xo = (this.width - this.xSize) / 2;
-        int yo = (this.height - this.ySize) / 2;
-        this.drawTexturedModalRect(xo, yo, 0, 0, this.xSize, this.ySize);
+        super.drawGuiContainerBackgroundLayer(par1, par2, par3);
     }
 }

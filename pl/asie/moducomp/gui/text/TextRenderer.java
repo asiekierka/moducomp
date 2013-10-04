@@ -1,4 +1,4 @@
-package pl.asie.moducomp.gui;
+package pl.asie.moducomp.gui.text;
 
 import net.minecraft.client.gui.Gui;
 import net.minecraft.util.ResourceLocation;

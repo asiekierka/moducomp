@@ -1,4 +1,4 @@
-package pl.asie.moducomp.block;
+package pl.asie.moducomp.lib;
 
 import net.minecraft.tileentity.TileEntity;
 
