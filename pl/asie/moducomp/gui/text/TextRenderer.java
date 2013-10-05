@@ -14,13 +14,13 @@ public class TextRenderer {
 		new ResourceLocation("moducomp", "textures/fonts/font_white.png")
 	};
 	
-	public static final int COLOR_BLACK = 0;
-	public static final int COLOR_WHITE = 1;
-	
 	public void drawLetter(Gui gui, TextureManager tm, int x, int y, int color, short chr) {
 		if(chr == 0) return;
 		ResourceLocation texture = textures[color % textures.length];
-        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+		float red = ((color >> 10) & 31) / 31.0F;
+		float green = ((color >> 5) & 31) / 31.0F;
+		float blue = (color & 31) / 31.0F;
+        GL11.glColor4f(red, green, blue, 1.0F);
 		tm.bindTexture(texture);
 		gui.drawTexturedModalRect(x, y, (chr & 31)*8, (chr >> 5)*8, 8, 8);
 	}
