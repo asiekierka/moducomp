@@ -81,6 +81,8 @@ public class GuiMainBoard extends GuiInventory implements IGUIText
         return new Packet250CustomPayload("ModularC", bos.toByteArray());
     }
     
+    int keysTyped = 0;
+    
     @Override
     protected void keyTyped(char keyChar, int keyCode)
     {
@@ -90,6 +92,9 @@ public class GuiMainBoard extends GuiInventory implements IGUIText
         } else if(keyCode == 200) { // Press UP to play (TODO MAKE THIS REAL)
         	PacketDispatcher.sendPacketToServer(sendTurnOnPacket());
         } else {
+        	try {
+        		while(keysTyped > 0) { Thread.sleep(5); }
+        	} catch(Exception e) { }
         	int key = (int)keyChar;
         	ModularComputing.instance.logger.info("Pressed key " + key);
             ByteArrayOutputStream bos = new ByteArrayOutputStream(32);
@@ -100,7 +105,14 @@ public class GuiMainBoard extends GuiInventory implements IGUIText
                 os.writeShort((short)key);
             } catch(Exception e) { e.printStackTrace(); }
             PacketDispatcher.sendPacketToServer(new Packet250CustomPayload("ModularC", bos.toByteArray()));
-            if(hardwareEcho) window.key(key);
+            if(hardwareEcho) {
+            	try {
+            		keysTyped++;
+            		window.key(key);
+            		Thread.sleep(5);
+            		keysTyped--;
+            	} catch(Exception e) { }
+            }
         }
     }
     

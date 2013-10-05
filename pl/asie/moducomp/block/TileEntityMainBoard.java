@@ -134,10 +134,10 @@ public class TileEntityMainBoard extends TileEntityInventory implements Runnable
 	public void run() { // Thread
 		while(isRunning) {
 			long t_start = System.nanoTime() / 1000000;
-			int cyclesLeft = cpu.run(250000 / 20); // 250KHz TODO changeable
+			int cyclesLeft = cpu.run(250000 / 200); // 250KHz TODO changeable
 			long t_end = System.nanoTime() / 1000000;
 			try {
-				Thread.sleep(50 - (t_end - t_start));
+				Thread.sleep(5 - (t_end - t_start));
 			} catch(Exception e) { }
 		}
 	}

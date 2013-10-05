@@ -757,6 +757,7 @@ public class CPUAreia implements ICPU
 	
 	public boolean interrupt(int line) {
 		if(this.cycles < 2) return false; // Give CPU time to ramp up
+		if((this.flags & F_INTERRUPT) == 0) return false; // Interrupts off
 		// Set the line
 		int addr = 4 + (line>>3);
 		int pos = 1 << (line&7);
@@ -810,6 +811,7 @@ public class CPUAreia implements ICPU
 	
 						this.cycles += sop.load_cycles;
 	
+						//this.debugPC(this.pc);
 						doUop(sop.uop, sop.fmask, sop.use_ret);
 						if(sop.can_jump)
 							break;
