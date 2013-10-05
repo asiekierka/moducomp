@@ -9,6 +9,7 @@ import pl.asie.moducomp.gui.GuiMainBoard;
 import pl.asie.moducomp.gui.text.TextWindow;
 import net.minecraft.src.*;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -72,8 +73,9 @@ public class NetworkHandler implements IPacketHandler {
 	        	TileEntityMainBoard mainBoard = (TileEntityMainBoard)tileEntity;
 	        	int commandID = packetData.readUnsignedByte();
 	        	ModularComputing.instance.logger.info("Received Mainboard command #"+commandID+" on "+(!(player instanceof EntityPlayerMP) ? "client" : "server"));
-				GuiMainBoard gmb = GuiMainBoard.instance;
 	        	if(!(player instanceof EntityPlayerMP)) { // Server -> Client
+	        		GuiScreen display = Minecraft.getMinecraft().currentScreen;
+	        		GuiMainBoard gmb = (display instanceof GuiMainBoard ? (GuiMainBoard)display : null);
 	        		switch(commandID) {
 	        			case 1: { // Print character
 	        				gmb.window.print(packetData.readShort());

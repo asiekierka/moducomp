@@ -35,12 +35,10 @@ public class GuiMainBoard extends GuiInventory
 {
 	private TextRenderer textRenderer = new TextRenderer();
 	public TextWindow window;
-	public static GuiMainBoard instance; // I'm going to die for this one.
 	
 	public GuiMainBoard(InventoryPlayer inventoryPlayer, TileEntityInventory tileEntity, ContainerInventory inventory, int xs, int ys, String textureName) {
 		super(inventoryPlayer, tileEntity, inventory, xs, ys, textureName);
 		PacketDispatcher.sendPacketToServer(sendGetWindowPacket());
-		this.instance = this;
 	}
 
     /**
