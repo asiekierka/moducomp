@@ -172,8 +172,10 @@ char_print:
 	move.b @11, #4
 	jsr getHex
 	move.w @5, @12 ; Set @5 to pos
-	cmp.w @14, @7
-	jz char_print_fin ; No len
+	move.w @12, @7
+	sub.w @12, #1
+	cmp.w @14, @12
+	jnc char_print_fin ; No len
 	jsr skipSpaces
 	move.b @11, #4
 	jsr getHex
