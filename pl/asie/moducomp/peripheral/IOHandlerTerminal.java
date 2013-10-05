@@ -23,7 +23,7 @@ public class IOHandlerTerminal implements IMemory
 	protected boolean flags[];
 	protected short lastKeys[];
 	
-	private byte config[] = {(byte)0x1E, (byte)0xA5, 0x01, (byte)0xFF};
+	private byte config[] = {(byte)0x1E, (byte)0xA5, 0x01, (byte)0x01};
 
 	public byte read8(ICPU cpu, int addr)
 	{

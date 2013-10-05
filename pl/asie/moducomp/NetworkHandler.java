@@ -88,11 +88,12 @@ public class NetworkHandler implements IPacketHandler {
 	        				int height = packetData.readShort();
 	        				int x = packetData.readShort();
 	        				int y = packetData.readShort();
+	        				if(textGui == null) break;
+	        				textGui.setHardwareEcho(packetData.readBoolean());
 	        				short[] chars = new short[width*height];
 	        				for(int i = 0; i < width*height; i++) {
 	        					chars[i] = packetData.readShort();
 	        				}
-	        				if(textGui == null) break;
 	        				window = new TextWindow(width, height);
 	        				window.x = x;
 	        				window.y = y;

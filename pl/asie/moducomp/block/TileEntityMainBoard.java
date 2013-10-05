@@ -74,11 +74,16 @@ public class TileEntityMainBoard extends TileEntityInventory implements Runnable
     }
     
     public void handleKey(short key) {
-    	terminal.addKey(this.cpu, key);
+    	if(this.cpu == null || this.terminal == null) return;
+    	if(terminal.addKey(this.cpu, key)) { // Echo
+    		this.window.key(key);
+    	}
     }
     
+    private boolean hardwareEcho;
+    
     public void setHardwareEcho(boolean is) {
-    	this.window.newline();
+    	hardwareEcho = is;
         ByteArrayOutputStream bos = new ByteArrayOutputStream(32);
         DataOutputStream os = new DataOutputStream(bos);
         try {
@@ -100,6 +105,7 @@ public class TileEntityMainBoard extends TileEntityInventory implements Runnable
             os.writeShort(this.window.height);
             os.writeShort(this.window.x);
             os.writeShort(this.window.y);
+            os.writeBoolean(this.hardwareEcho);
             short[] chars = this.window.getCharArray();
             for(int i = 0; i < this.window.width * this.window.height; i++) {
             	os.writeShort(chars[i]);
@@ -137,7 +143,7 @@ public class TileEntityMainBoard extends TileEntityInventory implements Runnable
 	}
 	
 	public void begin() {
-		if(isRunning) return;
+		isRunning = false;
 		// Reset window
 		this.window = new TextWindow(19, 7);
 		this.sendClearPacket();

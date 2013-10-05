@@ -352,7 +352,7 @@ public class CPUAreia implements ICPU
 		}
 
 		if(rop == -1)
-			throw new RuntimeException(String.format("unsupported op %02X", op));
+			throw new RuntimeException(String.format("unsupported op %02X at position %05X", op, this.pc));
 
 		int ret = 0;
 		ret |= (rsize == 2 ? 0x80000000 : 0x00000000);
@@ -770,6 +770,12 @@ public class CPUAreia implements ICPU
 			while((cyc_end - this.cycles) > 0)
 			{
 				if(interruptVector >= 0) {
+					this.regs[15] -= 1;
+					this.write8(0xF0000 | (0xFFFF & (int)this.regs[15]), (byte)(this.pc>>16));
+					this.regs[15] -= 2;
+					this.write16(0xF0000 | (0xFFFF & (int)this.regs[15]), (short)this.pc);
+					this.regs[15] -= 2;
+					this.write16(0xF0000 | (0xFFFF & (int)this.regs[15]), (short)this.flags);
 					this.pc = interruptVector;
 					interruptVector = -1;
 				}
@@ -795,7 +801,6 @@ public class CPUAreia implements ICPU
 						this.cycles += sop.load_cycles;
 	
 						doUop(sop.uop, sop.fmask, sop.use_ret);
-	
 						if(sop.can_jump)
 							break;
 					}

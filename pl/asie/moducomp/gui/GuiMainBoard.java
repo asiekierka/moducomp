@@ -21,6 +21,7 @@ import pl.asie.moducomp.lib.ContainerInventory;
 import pl.asie.moducomp.lib.GuiInventory;
 import pl.asie.moducomp.lib.TileEntityInventory;
 import net.minecraft.client.gui.GuiButton;
+import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.item.ItemStack;
@@ -83,12 +84,14 @@ public class GuiMainBoard extends GuiInventory implements IGUIText
     @Override
     protected void keyTyped(char keyChar, int keyCode)
     {
-    	super.keyTyped(keyChar, keyCode);
-        if(keyCode == 200) { // Press UP to play (TODO MAKE THIS REAL)
+        if (keyCode == 1) {
+            this.mc.displayGuiScreen((GuiScreen)null);
+            this.mc.setIngameFocus();
+        } else if(keyCode == 200) { // Press UP to play (TODO MAKE THIS REAL)
         	PacketDispatcher.sendPacketToServer(sendTurnOnPacket());
         } else {
-        	int key = keyCode;
-        	if(key >= 32 && key < 127) key = (int)keyChar;
+        	int key = (int)keyChar;
+        	ModularComputing.instance.logger.info("Pressed key " + key);
             ByteArrayOutputStream bos = new ByteArrayOutputStream(32);
             DataOutputStream os = new DataOutputStream(bos);
             try {

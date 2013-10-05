@@ -40,11 +40,14 @@ public class TextWindow {
 	public void key(int key) {
 		if(key == 13) { // Enter
 			newline();
-		} else if(key == 8) { // Backspace
+		} else if(key == 8 || key == 127) { // Backspace
 			if(this.x > 0) {
 				this.x--;
-				this.display[this.x + (this.y * this.width)] = 0;
-			}
+			} else if(this.y > 0) {
+				this.x = this.width - 1;
+				this.y--;
+			} else return;
+			this.display[this.x + (this.y * this.width)] = 0;
 		} else if(key == 9) { // Tab
 			for(int i = 0; i < TAB_SIZE; i++) {
 				print((short)32);
