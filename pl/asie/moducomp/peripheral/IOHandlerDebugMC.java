@@ -27,16 +27,9 @@ public class IOHandlerDebugMC implements IMemory
 	
 	public void write8(ICPU cpu, int addr, byte val)
 	{
-		/*
-			if(addr == 0xFE) lowChar = val;
-			else if(addr == 0xFF) {
-			int chr = (((int)0xFF & val) << 8) | ((int)0xFF & lowChar);
-			window.print((short)chr);
-			}
-		TODO - wait for GM to add asm.hrl */
 		if(addr == 0xFE) {
-			//System.out.write(val);
-			board.sendAndPrint((short)((int)0xFF & val));
+			System.out.write(val);
+			//board.sendAndPrint((short)((int)0xFF & val));
 		}
 	}
 

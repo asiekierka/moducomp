@@ -1,8 +1,10 @@
 package pl.asie.moducomp.peripheral;
 
+import pl.asie.moducomp.ModularComputing;
 import pl.asie.moducomp.api.computer.ICPU;
 import pl.asie.moducomp.api.computer.IMemory;
 import pl.asie.moducomp.block.TileEntityMainBoard;
+import pl.asie.moducomp.block.TileEntityTerminal;
 import pl.asie.moducomp.gui.text.TextWindow;
 
 public class IOHandlerTerminal implements IMemory
@@ -10,10 +12,10 @@ public class IOHandlerTerminal implements IMemory
 	public static final int FLAG_HARDWARE_ECHO = 0;
 	public static final int FLAG_INTERRUPT = 1;
 	public static final int FLAG_OUTPUT_SIZE = 2;
-	private TileEntityMainBoard board;
+	private TileEntityTerminal board;
 	
-	public IOHandlerTerminal(TileEntityMainBoard board) {
-		this.board = board;
+	public IOHandlerTerminal(TileEntityTerminal tileEntityTerminal) {
+		this.board = tileEntityTerminal;
 		this.flags = new boolean[8];
 		this.lastKeys = new short[0x18];
 	}
@@ -48,12 +50,12 @@ public class IOHandlerTerminal implements IMemory
 		if(addr == 0x0A) { // Send low
 			lowChar = val;
 			if(flags[FLAG_OUTPUT_SIZE]) // Use bytes
-				board.sendAndPrint((short)((short)lowChar & 0xFF));
+				board.print((short)((short)lowChar & 0xFF), true);
 		} else if(addr == 0x0B) { // Send high
 			int chr = (((int)0xFF & val) << 8) | ((int)0xFF & lowChar);
-			board.sendAndPrint((short)chr);
+			board.print((short)chr, true);
 		} else if(addr == 0x0C) { // Newline
-			board.sendNewline();
+			board.newline(true);
 		} else if(addr == 0x08) { // Flags
 			int value = (int)0xFF & val;
 			for(int i = 0; i < 8; i++)

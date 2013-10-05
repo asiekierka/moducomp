@@ -7,6 +7,7 @@ import pl.asie.moducomp.block.BlockMainBoard;
 import pl.asie.moducomp.block.BlockMusicBox;
 import pl.asie.moducomp.block.BlockRAMBoard;
 import pl.asie.moducomp.block.BlockTapeReader;
+import pl.asie.moducomp.block.BlockTerminal;
 import pl.asie.moducomp.block.TileEntityMusicBox;
 import pl.asie.moducomp.block.TileEntityTapeReader;
 import pl.asie.moducomp.integration.IntegrationOpenPeripheral;
@@ -38,6 +39,7 @@ public class ModularComputing {
 	public BlockMusicBox blockMusicBox;
 	public BlockRAMBoard blockRAMBoard;
 	public BlockMainBoard blockMainBoard;
+	public BlockTerminal blockTerminal;
 	public ItemPaperTape itemPaperTape;
 	public ItemRAM itemRAM;
 	public ItemCPUAreia itemCPUAreia;
@@ -89,6 +91,7 @@ public class ModularComputing {
     	blockMusicBox = (BlockMusicBox) registerBlock(BlockMusicBox.class, "moducomp.music_box", 1921);
     	blockRAMBoard = (BlockRAMBoard) registerBlock(BlockRAMBoard.class, "moducomp.ram_board", 1922);
     	blockMainBoard = (BlockMainBoard) registerBlock(BlockMainBoard.class, "moducomp:main_board", 1923);
+    	blockTerminal = (BlockTerminal) registerBlock(BlockTerminal.class, "moducomp:terminal", 1924);
     	
     	itemPaperTape = (ItemPaperTape) registerItem(ItemPaperTape.class, "moducomp.paper_tape", 19200);
     	itemRAM = (ItemRAM) registerItem(ItemRAM.class, "moducomp.ram", 19201);

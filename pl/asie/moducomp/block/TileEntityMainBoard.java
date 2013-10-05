@@ -2,11 +2,14 @@ package pl.asie.moducomp.block;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.util.ArrayList;
+import java.util.List;
 
 import cpw.mods.fml.common.network.PacketDispatcher;
 import cpw.mods.fml.common.network.Player;
 import pl.asie.moducomp.ModularComputing;
 import pl.asie.moducomp.NetworkHandler;
+import pl.asie.moducomp.api.IEntityPeripheral;
 import pl.asie.moducomp.api.IItemCPU;
 import pl.asie.moducomp.api.IItemMemory;
 import pl.asie.moducomp.api.IMemoryControllerProvider;
@@ -29,12 +32,8 @@ import net.minecraft.world.World;
 
 public class TileEntityMainBoard extends TileEntityInventory implements Runnable
 {
-	public TextWindow window;
-	private IOHandlerTerminal terminal;
-	
 	public TileEntityMainBoard() {
 		super(1, 1, "block.moducomp.main_board");
-		this.window = new TextWindow(19, 7);
 	}
 	
 	public IMemoryController getMemoryController() {
@@ -47,86 +46,16 @@ public class TileEntityMainBoard extends TileEntityInventory implements Runnable
 		}
 		return null;
 	}
-	
-    public void sendAndPrint(short chr) {
-    	this.window.print(chr);
-        ByteArrayOutputStream bos = new ByteArrayOutputStream(32);
-        DataOutputStream os = new DataOutputStream(bos);
-        try {
-        	NetworkHandler.prefixTileEntity(this, os);
-            os.writeByte(1);
-            os.writeShort(chr);
-        } catch(Exception e) { e.printStackTrace(); }
-        PacketDispatcher.sendPacketToAllAround(this.xCoord, this.yCoord, this.zCoord, Math.sqrt(this.getMaxRenderDistanceSquared()),
-        		this.worldObj.provider.dimensionId, new Packet250CustomPayload("ModularC", bos.toByteArray()));
-    }
     
-    public void sendNewline() {
-    	this.window.newline();
-        ByteArrayOutputStream bos = new ByteArrayOutputStream(32);
-        DataOutputStream os = new DataOutputStream(bos);
-        try {
-        	NetworkHandler.prefixTileEntity(this, os);
-            os.writeByte(4);
-        } catch(Exception e) { e.printStackTrace(); }
-        PacketDispatcher.sendPacketToAllAround(this.xCoord, this.yCoord, this.zCoord, Math.sqrt(this.getMaxRenderDistanceSquared()),
-        		this.worldObj.provider.dimensionId, new Packet250CustomPayload("ModularC", bos.toByteArray()));
-    }
-    
-    public void handleKey(short key) {
-    	if(this.cpu == null || this.terminal == null) return;
-    	if(terminal.addKey(this.cpu, key)) { // Echo
-    		this.window.key(key);
-    	}
-    }
-    
-    private boolean hardwareEcho;
-    
-    public void setHardwareEcho(boolean is) {
-    	hardwareEcho = is;
-        ByteArrayOutputStream bos = new ByteArrayOutputStream(32);
-        DataOutputStream os = new DataOutputStream(bos);
-        try {
-        	NetworkHandler.prefixTileEntity(this, os);
-            os.writeByte(5);
-            os.writeBoolean(is);
-        } catch(Exception e) { e.printStackTrace(); }
-        PacketDispatcher.sendPacketToAllAround(this.xCoord, this.yCoord, this.zCoord, Math.sqrt(this.getMaxRenderDistanceSquared()),
-        		this.worldObj.provider.dimensionId, new Packet250CustomPayload("ModularC", bos.toByteArray()));
-    }
-    
-    public void sendInitialWindowPacket(Player player) {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream(32);
-        DataOutputStream os = new DataOutputStream(bos);
-        try {
-        	NetworkHandler.prefixTileEntity(this, os);
-            os.writeByte(2);
-            os.writeShort(this.window.width);
-            os.writeShort(this.window.height);
-            os.writeShort(this.window.x);
-            os.writeShort(this.window.y);
-            os.writeBoolean(this.hardwareEcho);
-            short[] chars = this.window.getCharArray();
-            for(int i = 0; i < this.window.width * this.window.height; i++) {
-            	os.writeShort(chars[i]);
-            }
-        } catch(Exception e) { e.printStackTrace(); }
-        PacketDispatcher.sendPacketToPlayer(new Packet250CustomPayload("ModularC", bos.toByteArray()), player);
-    }
-    
-    public void sendClearPacket() {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream(32);
-        DataOutputStream os = new DataOutputStream(bos);
-        try {
-        	NetworkHandler.prefixTileEntity(this, os);
-            os.writeByte(3);
-            os.writeShort(this.window.width);
-            os.writeShort(this.window.height);
-        } catch(Exception e) { e.printStackTrace(); }
-        PacketDispatcher.sendPacketToAllAround(this.xCoord, this.yCoord, this.zCoord, Math.sqrt(this.getMaxRenderDistanceSquared()),
-        		this.worldObj.provider.dimensionId, new Packet250CustomPayload("ModularC", bos.toByteArray()));
-    }
-    
+	public List<IEntityPeripheral> getPeripherals() {
+		ArrayList<IEntityPeripheral> list = new ArrayList<IEntityPeripheral>(5);
+		for(int[] dir: Helper.DIRECTIONS) {
+			TileEntity te = worldObj.getBlockTileEntity(this.xCoord + dir[0], this.yCoord + dir[1], this.zCoord + dir[2]);
+			if(te instanceof IEntityPeripheral)
+				list.add((IEntityPeripheral)te);
+		}
+		return list;
+	}
 	private boolean isRunning = false;
 	private ICPU cpu;
 	private IMemoryController memory;
@@ -144,16 +73,9 @@ public class TileEntityMainBoard extends TileEntityInventory implements Runnable
 	
 	public void begin() {
 		isRunning = false;
-		// Reset window
-		this.window = new TextWindow(19, 8);
-		this.sendClearPacket();
 		// Get memory
 		this.memory = getMemoryController();
 		if(this.memory == null) return;
-		// Initialize peripherals
-		terminal = new IOHandlerTerminal(this);
-		this.memory.setDeviceSlot(0, terminal);
-		this.memory.setDeviceSlot(15, new IOHandlerDebugMC(this));
 		// TODO: TEMPORARY CODE - ROM
 		byte[] romData = new byte[8192];
 		try {
@@ -167,6 +89,16 @@ public class TileEntityMainBoard extends TileEntityInventory implements Runnable
 		IItemCPU itemCPU = (IItemCPU)cpuStack.getItem();
 		cpu = itemCPU.createNewCPUHandler(cpuStack);
 		if(cpu == null) return;
+		// Initialize peripherals
+		this.memory.setDeviceSlot(15, new IOHandlerDebugMC(this));
+		int i = 0;
+		for(IEntityPeripheral peripheral: getPeripherals()) {
+			ModularComputing.instance.logger.info("Adding peripheral: " + peripheral.toString() + ", slot "+i);
+			this.memory.setDeviceSlot(i, peripheral.init(this.cpu, this.memory));
+			i++;
+			if(i >= 15) break; // All slots taken!
+		}
+		// Reset
 		cpu.setMemoryHandler(memory);
 		cpu.resetCold();
 		isRunning = true;

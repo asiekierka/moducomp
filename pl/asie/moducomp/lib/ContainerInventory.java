@@ -9,9 +9,7 @@ import net.minecraft.item.*;
 import net.minecraft.tileentity.TileEntity;
 
 public class ContainerInventory extends Container {
-	// THIS IS A DUMMY CLASS FOR IMPLEMENTING HELPER FUNCTIONS.
-	// I have to do it like this because bindPlayerInventory.
-        protected int iSize;
+	protected int iSize;
 	public ContainerInventory(int size) {iSize = size;}
 	@Override
 	public boolean canInteractWith(EntityPlayer player) { return true; }
@@ -40,14 +38,14 @@ public class ContainerInventory extends Container {
 	}
 
 	protected void bindPlayerInventory(InventoryPlayer inventoryPlayer, int startX, int startY) {
-                for (int i = 0; i < 3; i++) {
-                        for (int j = 0; j < 9; j++) {
-                                addSlotToContainer(new Slot(inventoryPlayer, j + i * 9 + 9,
-                                                startX + j * 18, startY + i * 18));
-                        }
-                }
-                for (int i = 0; i < 9; i++) {
-                        addSlotToContainer(new Slot(inventoryPlayer, i, startX + i * 18, startY + 58));
-                }
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 9; j++) {
+                addSlotToContainer(new Slot(inventoryPlayer, j + i * 9 + 9,
+                        startX + j * 18, startY + i * 18));
+            }
+        }
+        for (int i = 0; i < 9; i++) {
+            addSlotToContainer(new Slot(inventoryPlayer, i, startX + i * 18, startY + 58));
+        }
 	}
 }

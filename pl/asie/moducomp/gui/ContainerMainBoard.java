@@ -19,8 +19,8 @@ public class ContainerMainBoard extends ContainerInventory {
 	public ContainerMainBoard(InventoryPlayer inventoryPlayer, TileEntityMainBoard tileEntity2) {
 		super(1);
 		tileEntity = tileEntity2;
-		addSlotToContainer(new SlotTyped(IItemCPU.class, tileEntity, 0, 26, 20));
-		bindPlayerInventory(inventoryPlayer, 8, 114);
+		addSlotToContainer(new SlotTyped(IItemCPU.class, tileEntity, 0, 80, 20));
+		bindPlayerInventory(inventoryPlayer, 8, 52);
 	}
 	
 	@Override

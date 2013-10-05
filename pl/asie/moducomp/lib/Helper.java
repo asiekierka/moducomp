@@ -7,6 +7,7 @@ import pl.asie.moducomp.ModularComputing;
 import net.minecraft.block.*;
 import net.minecraft.block.material.*;
 import net.minecraft.entity.EntityLiving;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.*;
@@ -99,7 +100,7 @@ public class Helper {
 
     private static final int[] PLACEMENT_DIRECTIONS = {2,5,3,4};
     // source: BlockFurnace
-    public static int placedDirection(EntityLiving par5EntityLiving)
+    public static int placedDirection(EntityLivingBase par5EntityLiving)
     {
         int l = MathHelper.floor_double((double)(par5EntityLiving.rotationYaw * 4.0F / 360.0F) + 0.5D) & 3;
         return PLACEMENT_DIRECTIONS[l];

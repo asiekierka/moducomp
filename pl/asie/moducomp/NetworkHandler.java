@@ -6,7 +6,8 @@ import java.util.*;
 import pl.asie.moducomp.api.IGUIText;
 import pl.asie.moducomp.block.TileEntityMainBoard;
 import pl.asie.moducomp.block.TileEntityTapeReader;
-import pl.asie.moducomp.gui.GuiMainBoard;
+import pl.asie.moducomp.block.TileEntityTerminal;
+import pl.asie.moducomp.gui.GuiTerminal;
 import pl.asie.moducomp.gui.text.TextWindow;
 import net.minecraft.src.*;
 import net.minecraft.client.Minecraft;
@@ -74,9 +75,30 @@ public class NetworkHandler implements IPacketHandler {
 	        	TileEntityMainBoard mainBoard = (TileEntityMainBoard)tileEntity;
 	        	int commandID = packetData.readUnsignedByte();
 	        	ModularComputing.instance.logger.info("Received Mainboard command #"+commandID+" on "+(!(player instanceof EntityPlayerMP) ? "client" : "server"));
+	        	if(player instanceof EntityPlayerMP) { // Client _> Server
+	        		switch(commandID) {
+	        			case 1: { // Start/stop CPU
+	        				boolean should = packetData.readBoolean();
+	        				if(should) {
+	        					mainBoard.begin();
+	        				} else mainBoard.end();
+	        			} break;
+	        		}
+	        	}
+	        } else if(tileEntity instanceof TileEntityTerminal) {
+	        	TileEntityTerminal terminal = (TileEntityTerminal)tileEntity;
+	        	int commandID = packetData.readUnsignedByte();
+	        	ModularComputing.instance.logger.info("Received Terminal command #"+commandID+" on "+(!(player instanceof EntityPlayerMP) ? "client" : "server"));
 	        	if(!(player instanceof EntityPlayerMP)) { // Server -> Client
 	        		GuiScreen display = Minecraft.getMinecraft().currentScreen;
 	        		IGUIText textGui = (display instanceof IGUIText ? (IGUIText)display : null);
+	        		if(display != null && textGui != null) {
+	        			TileEntity te = textGui.getTileEntity();
+	        			if(te.worldObj.provider.dimensionId != terminal.worldObj.provider.dimensionId
+	        					|| te.xCoord != terminal.xCoord || te.yCoord != terminal.yCoord || te.zCoord != terminal.zCoord) {
+	        				textGui = null; // Something screwed up - don't breathe this!
+	        			}
+	        		}
 	        		TextWindow window = (textGui != null ? textGui.getWindow() : null);
 	        		switch(commandID) {
 	        			case 1: { // Print character
@@ -117,17 +139,11 @@ public class NetworkHandler implements IPacketHandler {
 	        		}
 	        	} else { // Client -> Server
 	        		switch(commandID) {
-	        			case 1: { // Start/stop CPU
-	        				boolean should = packetData.readBoolean();
-	        				if(should) {
-	        					mainBoard.begin();
-	        				} else mainBoard.end();
-	        			} break;
 	        			case 2: { // Request initial data
-	        				mainBoard.sendInitialWindowPacket(player);
+	        				terminal.onPlayerOpen(player);
 	        			} break;
 	        			case 3: { // Key typed
-	        				mainBoard.handleKey(packetData.readShort());
+	        				terminal.key(packetData.readShort());
 	        			} break;
 	        		}
 	        	}

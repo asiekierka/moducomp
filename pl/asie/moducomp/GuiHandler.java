@@ -4,13 +4,16 @@ import pl.asie.moducomp.block.TileEntityMainBoard;
 import pl.asie.moducomp.block.TileEntityMusicBox;
 import pl.asie.moducomp.block.TileEntityRAMBoard;
 import pl.asie.moducomp.block.TileEntityTapeReader;
+import pl.asie.moducomp.block.TileEntityTerminal;
 import pl.asie.moducomp.gui.ContainerMainBoard;
 import pl.asie.moducomp.gui.ContainerMusicBox;
 import pl.asie.moducomp.gui.ContainerRAMBoard;
 import pl.asie.moducomp.gui.ContainerTapeReader;
 import pl.asie.moducomp.gui.GuiMainBoard;
+import pl.asie.moducomp.gui.GuiTerminal;
 import pl.asie.moducomp.gui.GuiTapeReader;
 import pl.asie.moducomp.lib.ContainerInventory;
+import pl.asie.moducomp.lib.ContainerNull;
 import pl.asie.moducomp.lib.GuiInventory;
 import pl.asie.moducomp.lib.TileEntityInventory;
 import net.minecraft.entity.player.EntityPlayer;
@@ -34,6 +37,9 @@ public class GuiHandler implements IGuiHandler {
             else if(tileEntity instanceof TileEntityMainBoard) {
             	return new ContainerMainBoard(player.inventory, (TileEntityMainBoard) tileEntity);
             }
+            else if(tileEntity instanceof TileEntityTerminal) {
+            	return new ContainerNull();
+            }
             return null;
     }
 
@@ -56,7 +62,10 @@ public class GuiHandler implements IGuiHandler {
             else if(tileEntity instanceof TileEntityMainBoard) {
                 return new GuiMainBoard(player.inventory, (TileEntityInventory) tileEntity, 
                 		(ContainerInventory) new ContainerMainBoard(player.inventory, (TileEntityMainBoard) tileEntity),
-                		176, 196, "main_board");
+                		176, 134, "one_slot");
+            }
+            else if(tileEntity instanceof TileEntityTerminal) {
+                return new GuiTerminal(player.inventory, (TileEntityTerminal) tileEntity);
             }
             return null;
 

@@ -18,12 +18,12 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.Icon;
 import net.minecraft.world.World;
 
-public class BlockMainBoard extends BlockMachineRotatable implements ITileEntityOwner {
+public class BlockTerminal extends BlockMachineRotatable implements ITileEntityOwner {
 	private Icon iconMG, iconMT;
 
-	public Class<? extends TileEntity> getTileEntityClass() { return TileEntityMainBoard.class; }
+	public Class<? extends TileEntity> getTileEntityClass() { return TileEntityTerminal.class; }
 	
-    public BlockMainBoard(int id, String name) {
+    public BlockTerminal(int id, String name) {
     	super(id, name);
     }
     
@@ -32,19 +32,19 @@ public class BlockMainBoard extends BlockMachineRotatable implements ITileEntity
     public void registerIcons (IconRegister iconRegister)
     {
     	this.iconMG = iconRegister.registerIcon("moducomp:machine_generic");
-    	this.iconMT = iconRegister.registerIcon("moducomp:mainboard_front");
+    	this.iconMT = iconRegister.registerIcon("moducomp:terminal");
     }
 	
     @Override
     @SideOnly(Side.CLIENT)
     public Icon getIcon (int side, int metadata)
     {
-        if(side == metadata || (side == 3 && metadata == 0)) return this.iconMT;
+        if(side == metadata || (metadata == 0 && side == 3)) return this.iconMT;
         else return this.iconMG;
     }
     
 	@Override
 	public TileEntity createNewTileEntity(World world) {
-		return new TileEntityMainBoard();
+		return new TileEntityTerminal();
 	}
 }
