@@ -1,4 +1,4 @@
-; Code by GreaseMonkey
+; Code by asiekierka
 
 	.org $FE000
 code_start:
