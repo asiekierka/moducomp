@@ -23,7 +23,9 @@ public class IOHandlerTerminal implements IMemory
 	protected byte data[];
 	protected int size, interruptLane;
 	protected boolean flags[];
+	protected boolean keyWait;
 	protected short lastKeys[];
+	protected short lastKeyPos = 0;
 	
 	private byte config[] = {(byte)0x1E, (byte)0xA5, 0x01, (byte)0x01};
 
@@ -36,8 +38,15 @@ public class IOHandlerTerminal implements IMemory
 			for(int i = 0; i < 8; i++)
 				value |= (flags[i]?1:0)<<i;
 			return (byte)value;
-		} else if(addr >= 0x10 && addr < 0x3F) { // Last 24 keys
-			return (byte)(lastKeys[(addr - 0x10)>>1] >> ((addr & 1) > 0 ? 8 : 0));
+		} else if(addr >= 0x10 && addr < 0x12) { // Last key
+			short key = lastKeys[0];
+			if(addr == 0x11 && lastKeyPos > 0) {
+				while(keyWait) try{Thread.sleep(1);} catch(Exception e){}
+				System.arraycopy(lastKeys, 1, lastKeys, 0, lastKeys.length - 1);
+				lastKeyPos--;
+				lastKeys[lastKeyPos] = 0;
+			}
+			return (byte)(key >> ((addr & 1) > 0 ? 8 : 0));
 		} else if(addr == 0x09) { // Interrupt lane
 			return (byte)interruptLane;
 		} else return (byte)0;
@@ -67,10 +76,13 @@ public class IOHandlerTerminal implements IMemory
 	}
 	
 	public boolean addKey(ICPU cpu, short key) {
+		keyWait = true;
 		System.arraycopy(lastKeys, 0, lastKeys, 1, lastKeys.length - 1);
 		lastKeys[0] = key;
+		lastKeyPos++;
 		if(flags[FLAG_INTERRUPT] && interruptLane >= 0 && interruptLane < 28)
 			cpu.interrupt(interruptLane);
+		keyWait = false;
 		return flags[FLAG_HARDWARE_ECHO];
 	}
 

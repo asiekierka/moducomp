@@ -255,8 +255,10 @@ char_backspace: ; Remove char
 
 int_vec_char:
 	ld.w @1, $FD010, @8
+	cmp.w @1, #0
+	jz int_vec_end
 	jsr int_vec_char_read
-	jmp int_vec_end
+	jmp int_vec_char
 
 int_vec_char_read:
 	; Check!
