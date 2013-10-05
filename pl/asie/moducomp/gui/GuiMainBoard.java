@@ -36,10 +36,15 @@ public class GuiMainBoard extends GuiInventory implements IGUIText
 {
 	private TextRenderer textRenderer = new TextRenderer();
 	private TextWindow window;
+	private boolean hardwareEcho;
 	
 	public TextWindow getWindow() { return window; }
 	public void setWindow(TextWindow window) {
 		this.window = window;
+	}
+	public boolean getHardwareEcho() { return hardwareEcho; }
+	public void setHardwareEcho(boolean echo) {
+		this.hardwareEcho = echo;
 	}
 	
 	public GuiMainBoard(InventoryPlayer inventoryPlayer, TileEntityInventory tileEntity, ContainerInventory inventory, int xs, int ys, String textureName) {
@@ -76,11 +81,23 @@ public class GuiMainBoard extends GuiInventory implements IGUIText
     }
     
     @Override
-    protected void keyTyped(char keyChar, int key)
+    protected void keyTyped(char keyChar, int keyCode)
     {
-    	super.keyTyped(keyChar, key);
-        if(key == 200) { // Press UP to play (TODO MAKE THIS REAL)
+    	super.keyTyped(keyChar, keyCode);
+        if(keyCode == 200) { // Press UP to play (TODO MAKE THIS REAL)
         	PacketDispatcher.sendPacketToServer(sendTurnOnPacket());
+        } else {
+        	int key = keyCode;
+        	if(key >= 32 && key < 127) key = (int)keyChar;
+            ByteArrayOutputStream bos = new ByteArrayOutputStream(32);
+            DataOutputStream os = new DataOutputStream(bos);
+            try {
+            	NetworkHandler.prefixTileEntity(this.tileEntity, os);
+                os.writeByte(3);
+                os.writeShort((short)key);
+            } catch(Exception e) { e.printStackTrace(); }
+            PacketDispatcher.sendPacketToServer(new Packet250CustomPayload("ModularC", bos.toByteArray()));
+            if(hardwareEcho) window.key(key);
         }
     }
     

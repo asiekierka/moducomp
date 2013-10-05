@@ -20,6 +20,7 @@ import pl.asie.moducomp.item.ItemPaperTape;
 import pl.asie.moducomp.lib.Helper;
 import pl.asie.moducomp.lib.TileEntityInventory;
 import pl.asie.moducomp.peripheral.IOHandlerDebugMC;
+import pl.asie.moducomp.peripheral.IOHandlerTerminal;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.network.packet.Packet250CustomPayload;
@@ -29,6 +30,7 @@ import net.minecraft.world.World;
 public class TileEntityMainBoard extends TileEntityInventory implements Runnable
 {
 	public TextWindow window;
+	private IOHandlerTerminal terminal;
 	
 	public TileEntityMainBoard() {
 		super(1, 1, "block.moducomp.main_board");
@@ -54,6 +56,35 @@ public class TileEntityMainBoard extends TileEntityInventory implements Runnable
         	NetworkHandler.prefixTileEntity(this, os);
             os.writeByte(1);
             os.writeShort(chr);
+        } catch(Exception e) { e.printStackTrace(); }
+        PacketDispatcher.sendPacketToAllAround(this.xCoord, this.yCoord, this.zCoord, Math.sqrt(this.getMaxRenderDistanceSquared()),
+        		this.worldObj.provider.dimensionId, new Packet250CustomPayload("ModularC", bos.toByteArray()));
+    }
+    
+    public void sendNewline() {
+    	this.window.newline();
+        ByteArrayOutputStream bos = new ByteArrayOutputStream(32);
+        DataOutputStream os = new DataOutputStream(bos);
+        try {
+        	NetworkHandler.prefixTileEntity(this, os);
+            os.writeByte(4);
+        } catch(Exception e) { e.printStackTrace(); }
+        PacketDispatcher.sendPacketToAllAround(this.xCoord, this.yCoord, this.zCoord, Math.sqrt(this.getMaxRenderDistanceSquared()),
+        		this.worldObj.provider.dimensionId, new Packet250CustomPayload("ModularC", bos.toByteArray()));
+    }
+    
+    public void handleKey(short key) {
+    	terminal.addKey(this.cpu, key);
+    }
+    
+    public void setHardwareEcho(boolean is) {
+    	this.window.newline();
+        ByteArrayOutputStream bos = new ByteArrayOutputStream(32);
+        DataOutputStream os = new DataOutputStream(bos);
+        try {
+        	NetworkHandler.prefixTileEntity(this, os);
+            os.writeByte(5);
+            os.writeBoolean(is);
         } catch(Exception e) { e.printStackTrace(); }
         PacketDispatcher.sendPacketToAllAround(this.xCoord, this.yCoord, this.zCoord, Math.sqrt(this.getMaxRenderDistanceSquared()),
         		this.worldObj.provider.dimensionId, new Packet250CustomPayload("ModularC", bos.toByteArray()));
@@ -98,7 +129,6 @@ public class TileEntityMainBoard extends TileEntityInventory implements Runnable
 		while(isRunning) {
 			long t_start = System.nanoTime() / 1000000;
 			int cyclesLeft = cpu.run(250000 / 20); // 250KHz TODO changeable
-			//ModularComputing.instance.logger.info("CPU tick, "+cyclesLeft+" cycles left");
 			long t_end = System.nanoTime() / 1000000;
 			try {
 				Thread.sleep(50 - (t_end - t_start));
@@ -115,8 +145,10 @@ public class TileEntityMainBoard extends TileEntityInventory implements Runnable
 		this.memory = getMemoryController();
 		if(this.memory == null) return;
 		// Initialize peripherals
+		terminal = new IOHandlerTerminal(this);
+		this.memory.setDeviceSlot(0, terminal);
 		this.memory.setDeviceSlot(15, new IOHandlerDebugMC(this));
-		// TEMPORARY CODE - ROM
+		// TODO: TEMPORARY CODE - ROM
 		byte[] romData = new byte[8192];
 		try {
 			ModularComputing.class.getClassLoader().getResourceAsStream("assets/moducomp/bios.rom").read(romData);
@@ -132,7 +164,7 @@ public class TileEntityMainBoard extends TileEntityInventory implements Runnable
 		cpu.setMemoryHandler(memory);
 		cpu.resetCold();
 		isRunning = true;
-		ModularComputing.instance.logger.info("Starting emulation!");
+		ModularComputing.instance.debug("Starting emulation!");
 		new Thread(this).start();
 	}
 	

@@ -105,6 +105,14 @@ public class NetworkHandler implements IPacketHandler {
 	        				if(textGui == null) break;
 	        				textGui.setWindow(new TextWindow(width, height));
 	        			} break;
+	        			case 4: { // Newline
+	        				if(window == null) break;
+	        				window.newline();
+	        			} break;
+	        			case 5: { // Hardware echo
+	        				if(textGui == null) break;
+	        				textGui.setHardwareEcho(packetData.readBoolean());
+	        			} break;
 	        		}
 	        	} else { // Client -> Server
 	        		switch(commandID) {
@@ -116,6 +124,9 @@ public class NetworkHandler implements IPacketHandler {
 	        			} break;
 	        			case 2: { // Request initial data
 	        				mainBoard.sendInitialWindowPacket(player);
+	        			} break;
+	        			case 3: { // Key typed
+	        				mainBoard.handleKey(packetData.readShort());
 	        			} break;
 	        		}
 	        	}
