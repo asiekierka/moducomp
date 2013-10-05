@@ -51,10 +51,14 @@ public class IOHandlerTerminal implements IMemory
 			return (byte)(key >> ((addr & 1) > 0 ? 8 : 0));
 		} else if(addr == 0x09) { // Interrupt lane
 			return (byte)interruptLane;
+		} else if(addr == 0x16) {
+			return colorNumber;
 		} else return (byte)0;
 	}
 	
 	private byte lowChar;
+	private byte colorNumber;
+	private byte lowColor;
 	
 	public void write8(ICPU cpu, int addr, byte val)
 	{
@@ -75,6 +79,12 @@ public class IOHandlerTerminal implements IMemory
 			board.setHardwareEcho(flags[FLAG_HARDWARE_ECHO]);
 		} else if(addr == 0x09) { // Interrupt lane
 			interruptLane = (int)0xFF & val;
+		} else if(addr == 0x16) { // Color number
+			colorNumber = val;
+		} else if(addr == 0x14) {
+			lowColor = val;
+		} else if(addr == 0x15) {
+			board.setPalette((int)0xFF & colorNumber, (short)(((int)0xFF & val)<<8 | (int)0xFF & lowColor));
 		}
 	}
 	

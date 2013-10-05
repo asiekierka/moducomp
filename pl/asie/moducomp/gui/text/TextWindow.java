@@ -81,8 +81,12 @@ public class TextWindow {
 		return this.palette;
 	}
 
+	public void setPaletteColor(int number, short color) {
+		this.palette[number & 63] = color;
+	}
+	
 	public short getColor(byte color) {
-		return this.palette[(int)0xFF & color];
+		return this.palette[color & 63];
 	}
 	public short[] getCharArray() {
 		return this.display;

@@ -114,13 +114,14 @@ public class NetworkHandler implements IPacketHandler {
 	        				if(textGui == null) break;
 	        				textGui.setHardwareEcho(packetData.readBoolean());
 	        				short[] chars = new short[width*height*2];
-	        				for(int i = 0; i < width*height*2; i++) {
+	        				for(int i = 0; i < width*height*2; i++)
 	        					chars[i] = packetData.readShort();
-	        				}
 	        				window = new TextWindow(width, height);
 	        				window.x = x;
 	        				window.y = y;
 	        				window.setCharArray(chars);
+	        				for(int i = 0; i < 64; i++)
+	        					window.setPaletteColor(i, packetData.readShort());
 	        				textGui.setWindow(window);
 	        			} break;
 	        			case 3: { // Clear window
@@ -146,6 +147,11 @@ public class NetworkHandler implements IPacketHandler {
 	        						window.key(key);
 	        					}
 	        				}
+	        			} break;
+	        			case 7: { // Set palette color
+	        				if(window == null) break;
+	        				int number = packetData.readUnsignedByte();
+	        				window.setPaletteColor(number, packetData.readShort());
 	        			} break;
 	        		}
 	        	} else { // Client -> Server

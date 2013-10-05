@@ -57,6 +57,20 @@ public class TileEntityTerminal extends TileEntityInventory implements IEntityPe
     	}
     }
     
+    public void setPalette(int number, short col) {
+    	this.window.setPaletteColor(number, col);
+        ByteArrayOutputStream bos = new ByteArrayOutputStream(32);
+        DataOutputStream os = new DataOutputStream(bos);
+        try {
+        	NetworkHandler.prefixTileEntity(this, os);
+            os.writeByte(7);
+            os.writeByte((byte)number);
+            os.writeShort(col);
+        } catch(Exception e) { e.printStackTrace(); }
+        PacketDispatcher.sendPacketToAllAround(this.xCoord, this.yCoord, this.zCoord, Math.sqrt(this.getMaxRenderDistanceSquared()),
+        		this.worldObj.provider.dimensionId, new Packet250CustomPayload("ModularC", bos.toByteArray()));
+    }
+    
     public void keyExcludingPlayer(short chr, int excludedID) {
         ByteArrayOutputStream bos = new ByteArrayOutputStream(32);
         DataOutputStream os = new DataOutputStream(bos);
@@ -115,7 +129,7 @@ public class TileEntityTerminal extends TileEntityInventory implements IEntityPe
     
     public void onPlayerOpen(Player player) {
     	if(this.window == null) clear(false);
-        ByteArrayOutputStream bos = new ByteArrayOutputStream(24 + (this.window.width * this.window.height));
+        ByteArrayOutputStream bos = new ByteArrayOutputStream(160 + (this.window.width * this.window.height * 2));
         DataOutputStream os = new DataOutputStream(bos);
         try {
         	NetworkHandler.prefixTileEntity(this, os);
@@ -128,6 +142,10 @@ public class TileEntityTerminal extends TileEntityInventory implements IEntityPe
             short[] chars = this.window.getCharArray();
             for(int i = 0; i < this.window.width * this.window.height * 2; i++) {
             	os.writeShort(chars[i]);
+            }
+            short[] colors = this.window.getPalette();
+            for(int i = 0; i < 64; i++) {
+            	os.writeShort(colors[i]);
             }
         } catch(Exception e) { e.printStackTrace(); }
         PacketDispatcher.sendPacketToPlayer(new Packet250CustomPayload("ModularC", bos.toByteArray()), player);

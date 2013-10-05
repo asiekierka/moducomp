@@ -51,6 +51,12 @@ detectionEnd:
 	move.b @1, #$0F
 	st.b $FFF82, @1
 
+	; Set color
+	move.b @1, #$0F
+	st.b $FD016, @8, @1
+	move.w @1, #$7F04
+	st.w $FD014, @8, @1
+
 	jsr printMemory
 prompt:
 	st.b $FD00C, @8, @0
