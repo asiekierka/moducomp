@@ -136,6 +136,16 @@ public class NetworkHandler implements IPacketHandler {
 	        				if(textGui == null) break;
 	        				textGui.setHardwareEcho(packetData.readBoolean());
 	        			} break;
+	        			case 6: { // Echo key
+	        				short key = packetData.readShort();
+	        				int excludedID = packetData.readInt();
+	        				if(player instanceof EntityPlayer) {
+	        					EntityPlayer entity = (EntityPlayer)player;
+	        					if(entity.entityId != excludedID && window != null) {
+	        						window.key(key);
+	        					}
+	        				}
+	        			} break;
 	        		}
 	        	} else { // Client -> Server
 	        		switch(commandID) {
@@ -143,7 +153,7 @@ public class NetworkHandler implements IPacketHandler {
 	        				terminal.onPlayerOpen(player);
 	        			} break;
 	        			case 3: { // Key typed
-	        				terminal.key(packetData.readShort());
+	        				terminal.key(packetData.readShort(), player);
 	        			} break;
 	        		}
 	        	}

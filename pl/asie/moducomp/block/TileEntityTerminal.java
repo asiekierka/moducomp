@@ -22,6 +22,7 @@ import pl.asie.moducomp.lib.Helper;
 import pl.asie.moducomp.lib.TileEntityInventory;
 import pl.asie.moducomp.peripheral.IOHandlerDebugMC;
 import pl.asie.moducomp.peripheral.IOHandlerTerminal;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.network.packet.Packet250CustomPayload;
@@ -55,6 +56,19 @@ public class TileEntityTerminal extends TileEntityInventory implements IEntityPe
     	}
     }
     
+    public void keyExcludingPlayer(short chr, int excludedID) {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream(32);
+        DataOutputStream os = new DataOutputStream(bos);
+        try {
+        	NetworkHandler.prefixTileEntity(this, os);
+            os.writeByte(6);
+            os.writeShort(chr);
+            os.writeInt(excludedID);
+        } catch(Exception e) { e.printStackTrace(); }
+        PacketDispatcher.sendPacketToAllAround(this.xCoord, this.yCoord, this.zCoord, Math.sqrt(this.getMaxRenderDistanceSquared()),
+        		this.worldObj.provider.dimensionId, new Packet250CustomPayload("ModularC", bos.toByteArray()));
+    }
+    
     public void newline(boolean send) {
     	this.window.newline();
     	if(send) {
@@ -69,10 +83,17 @@ public class TileEntityTerminal extends TileEntityInventory implements IEntityPe
     	}
     }
     
-    public void key(short key) {
+    public void key(short key, Player sender) {
+    	if(sender instanceof EntityPlayer) {
+    		EntityPlayer player = (EntityPlayer) sender;
+    	}
     	if(this.cpu == null || this.terminal == null) return;
     	if(terminal.addKey(this.cpu, key)) { // Echo
     		this.window.key(key);
+    	   	if(sender instanceof EntityPlayer) {
+        		EntityPlayer player = (EntityPlayer) sender;
+        		keyExcludingPlayer(key, player.entityId);
+        	}
     	}
     }
     
