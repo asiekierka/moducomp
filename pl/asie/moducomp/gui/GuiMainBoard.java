@@ -10,6 +10,7 @@ import org.lwjgl.opengl.GL11;
 
 import pl.asie.moducomp.ModularComputing;
 import pl.asie.moducomp.NetworkHandler;
+import pl.asie.moducomp.api.IGUIText;
 import pl.asie.moducomp.api.IItemTape;
 import pl.asie.moducomp.block.TileEntityMainBoard;
 import pl.asie.moducomp.block.TileEntityMusicBox;
@@ -31,10 +32,15 @@ import cpw.mods.fml.relauncher.SideOnly;
 import cpw.mods.fml.relauncher.Side;
 
 @SideOnly(Side.CLIENT)
-public class GuiMainBoard extends GuiInventory
+public class GuiMainBoard extends GuiInventory implements IGUIText
 {
 	private TextRenderer textRenderer = new TextRenderer();
-	public TextWindow window;
+	private TextWindow window;
+	
+	public TextWindow getWindow() { return window; }
+	public void setWindow(TextWindow window) {
+		this.window = window;
+	}
 	
 	public GuiMainBoard(InventoryPlayer inventoryPlayer, TileEntityInventory tileEntity, ContainerInventory inventory, int xs, int ys, String textureName) {
 		super(inventoryPlayer, tileEntity, inventory, xs, ys, textureName);

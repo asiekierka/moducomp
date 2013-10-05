@@ -3,6 +3,7 @@ package pl.asie.moducomp;
 import java.io.*;
 import java.util.*;
 
+import pl.asie.moducomp.api.IGUIText;
 import pl.asie.moducomp.block.TileEntityMainBoard;
 import pl.asie.moducomp.block.TileEntityTapeReader;
 import pl.asie.moducomp.gui.GuiMainBoard;
@@ -75,10 +76,12 @@ public class NetworkHandler implements IPacketHandler {
 	        	ModularComputing.instance.logger.info("Received Mainboard command #"+commandID+" on "+(!(player instanceof EntityPlayerMP) ? "client" : "server"));
 	        	if(!(player instanceof EntityPlayerMP)) { // Server -> Client
 	        		GuiScreen display = Minecraft.getMinecraft().currentScreen;
-	        		GuiMainBoard gmb = (display instanceof GuiMainBoard ? (GuiMainBoard)display : null);
+	        		IGUIText textGui = (display instanceof IGUIText ? (IGUIText)display : null);
+	        		TextWindow window = (textGui != null ? textGui.getWindow() : null);
 	        		switch(commandID) {
 	        			case 1: { // Print character
-	        				gmb.window.print(packetData.readShort());
+	        				if(window == null) break;
+	        				window.print(packetData.readShort());
 	        			} break;
 	        			case 2: { // Get initial data
 	        				int width = packetData.readShort();
@@ -89,15 +92,18 @@ public class NetworkHandler implements IPacketHandler {
 	        				for(int i = 0; i < width*height; i++) {
 	        					chars[i] = packetData.readShort();
 	        				}
-	        				gmb.window = new TextWindow(width, height);
-	        				gmb.window.x = x;
-	        				gmb.window.y = y;
-	        				gmb.window.setCharArray(chars);
+	        				if(textGui == null) break;
+	        				window = new TextWindow(width, height);
+	        				window.x = x;
+	        				window.y = y;
+	        				window.setCharArray(chars);
+	        				textGui.setWindow(window);
 	        			} break;
 	        			case 3: { // Clear window
 	        				int width = packetData.readShort();
 	        				int height = packetData.readShort();
-	        				gmb.window = new TextWindow(width, height);
+	        				if(textGui == null) break;
+	        				textGui.setWindow(new TextWindow(width, height));
 	        			} break;
 	        		}
 	        	} else { // Client -> Server
