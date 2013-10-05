@@ -16,7 +16,12 @@ detectRAMLoop:
 	cmp.b @13, @14
 	jnz detectRAMEnd
 	add.w @9, #$0080
+	cmp.w @9, #$007F
+	jz detectRAM64K
 	jmp detectRAMLoop
+detectRAM64K:
+	move.w @9, #$0200
+	jmp detectTerminal
 detectRAMEnd:
 	lsr.w @9, #7
 	; Check for terminal
@@ -88,9 +93,12 @@ skipSpaces:
 	jz skipSpaces
 	ret
 
+; @11 for max length
 getHex:
 	move.w @12, @0
 getHexLoop:
+	cmp.w @14, @7
+	jz getHexEnd ; over
 	move.w @13, @0
 	ld.b @13, $00000, @14
 	add.w @14, #1
@@ -102,13 +110,16 @@ getHexLoop:
 getHexSet:
 	lsl.w @12, #4
 	or.w @12, @13
+	sub.b @11, #1
+	cmp.b @11, @0
+	jz getHexEnd
 	jmp getHexLoop
 getHexUp:
 	cmp.b @13, #71
 	jc getHexUp2
+	sub.b @13, #32
 	cmp.b @13, #71
 	jnc getHexEnd
-	sub.b @13, #32
 getHexUp2:
 	cmp.b @13, #65
 	jc getHexEnd
@@ -131,12 +142,37 @@ printMemory:
 	jsr putsF
 	ret
 
-char_print:
-	move.w @5, @0
-	move.w @6, #$10 ; Default length
+char_write:
 	jsr skipSpaces
+	move.b @11, #4
 	jsr getHex
 	move.w @5, @12 ; Set @5 to pos
+	jsr skipSpaces
+char_write_loop:
+	move.b @11, #2
+	jsr getHex
+	st.b $00000, @5, @12
+	add.w @5, #1
+	add.w @14, #1
+	cmp.w @14, @7
+	jz parse_end ; Over
+	jmp char_write_loop
+
+char_print:
+	move.w @6, #$10 ; Default length
+	jsr skipSpaces
+	move.b @11, #4
+	jsr getHex
+	move.w @5, @12 ; Set @5 to pos
+	cmp.w @14, @7
+	jz char_print_fin ; No len
+	jsr skipSpaces
+	move.b @11, #4
+	jsr getHex
+	move.w @6, @12 ; Set @6 to len
+	cmp.w @6, #$81
+	jc char_print_fin ; Too large?
+	move.w @6, #$80
 char_print_fin:
 	cmp.w @6, #0
 	jz parse_end
@@ -145,7 +181,7 @@ char_print_fin:
 	jsr printHex
 	move.w @1, #print_sep_string
 	jsr putsF
-	move.w @11, #4
+	move.w @10, #4
 char_print_loop:
 	cmp.w @6, #0
 	jz parse_end
@@ -157,16 +193,22 @@ char_print_loop:
 	jsr printHex
 	add.w @5, #1
 	sub.w @6, #1
-	sub.w @11, #1
-	cmp.w @11, #0
+	sub.w @10, #1
+	cmp.w @10, #0
 	jnz char_print_loop
 	cmp.w @6, #0
 	jz parse_end
 	st.b $FD00C, @8, @0
 	jmp char_print_fin
 
-char_ram:
+char_info:
 	jsr printMemory
+	st.b $FD00C, @8, @0
+	move.w @1, #sp_string
+	jsr putsF
+	move.w @2, #4
+	move.w @1, @15
+	jsr printHex
 	jmp parse_end
 
 char_enter: ; Parse!
@@ -175,10 +217,16 @@ char_enter: ; Parse!
 	add.w @15, #14 ; We won't be coming back.
 	move.w @14, #2 ; Pointer
 	ld.b @1, $00002
+	cmp.b @1, #97
+	jc char_parse
+	sub.b @1, #32
+char_parse:
+	cmp.b @1, #87
+	jz char_write
 	cmp.b @1, #80
 	jz char_print
-	cmp.b @1, #82
-	jz char_ram
+	cmp.b @1, #73
+	jz char_info
 parse_end:
 	move.w @14, @0
 parse_end_loop:
@@ -273,6 +321,8 @@ no_ram_string:
 	.db "NO RAM FOUND", 0
 ram_amount_string:
 	.db "0 BYTES OK", 0
+sp_string:
+	.db "SP: F", 0
 print_sep_string:
 	.db " |", 0
 
