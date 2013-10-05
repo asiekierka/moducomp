@@ -39,16 +39,17 @@ public class TileEntityTerminal extends TileEntityInventory implements IEntityPe
 		super(1, 1, "block.moducomp.terminal");
 	}
 	
-	public void print(short chr) { print(chr, false); }
+	public void print(short color, short chr) { print(color, chr, false); }
 	
-    public void print(short chr, boolean send) {
-    	this.window.print(chr);
+    public void print(short color, short chr, boolean send) {
+    	this.window.print(color, chr);
     	if(send) {
 	        ByteArrayOutputStream bos = new ByteArrayOutputStream(32);
 	        DataOutputStream os = new DataOutputStream(bos);
 	        try {
 	        	NetworkHandler.prefixTileEntity(this, os);
 	            os.writeByte(1);
+	            os.writeShort(color);
 	            os.writeShort(chr);
 	        } catch(Exception e) { e.printStackTrace(); }
 	        PacketDispatcher.sendPacketToAllAround(this.xCoord, this.yCoord, this.zCoord, Math.sqrt(this.getMaxRenderDistanceSquared()),
@@ -125,7 +126,7 @@ public class TileEntityTerminal extends TileEntityInventory implements IEntityPe
             os.writeShort(this.window.y);
             os.writeBoolean(this.hardwareEcho);
             short[] chars = this.window.getCharArray();
-            for(int i = 0; i < this.window.width * this.window.height; i++) {
+            for(int i = 0; i < this.window.width * this.window.height * 2; i++) {
             	os.writeShort(chars[i]);
             }
         } catch(Exception e) { e.printStackTrace(); }

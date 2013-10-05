@@ -1,5 +1,7 @@
 package pl.asie.moducomp.peripheral;
 
+import java.util.Random;
+
 import pl.asie.moducomp.ModularComputing;
 import pl.asie.moducomp.api.computer.ICPU;
 import pl.asie.moducomp.api.computer.IMemory;
@@ -39,9 +41,9 @@ public class IOHandlerTerminal implements IMemory
 				value |= (flags[i]?1:0)<<i;
 			return (byte)value;
 		} else if(addr >= 0x10 && addr < 0x12) { // Last key
+			while(keyWait) try{Thread.sleep(1);} catch(Exception e){}
 			short key = lastKeys[0];
 			if(addr == 0x11 && lastKeyPos > 0) {
-				while(keyWait) try{Thread.sleep(1);} catch(Exception e){}
 				System.arraycopy(lastKeys, 1, lastKeys, 0, lastKeys.length - 1);
 				lastKeyPos--;
 				lastKeys[lastKeyPos] = 0;
@@ -56,13 +58,14 @@ public class IOHandlerTerminal implements IMemory
 	
 	public void write8(ICPU cpu, int addr, byte val)
 	{
+		short color = 32767;
 		if(addr == 0x0A) { // Send low
 			lowChar = val;
 			if(flags[FLAG_OUTPUT_SIZE]) // Use bytes
-				board.print((short)((short)lowChar & 0xFF), true);
+				board.print(color, (short)((short)lowChar & 0xFF), true);
 		} else if(addr == 0x0B) { // Send high
 			int chr = (((int)0xFF & val) << 8) | ((int)0xFF & lowChar);
-			board.print((short)chr, true);
+			board.print(color, (short)chr, true);
 		} else if(addr == 0x0C) { // Newline
 			board.newline(true);
 		} else if(addr == 0x08) { // Flags

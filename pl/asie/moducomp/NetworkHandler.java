@@ -103,7 +103,8 @@ public class NetworkHandler implements IPacketHandler {
 	        		switch(commandID) {
 	        			case 1: { // Print character
 	        				if(window == null) break;
-	        				window.print(packetData.readShort());
+	        				short color = packetData.readShort();
+	        				window.print(color, packetData.readShort());
 	        			} break;
 	        			case 2: { // Get initial data
 	        				int width = packetData.readShort();
@@ -112,8 +113,8 @@ public class NetworkHandler implements IPacketHandler {
 	        				int y = packetData.readShort();
 	        				if(textGui == null) break;
 	        				textGui.setHardwareEcho(packetData.readBoolean());
-	        				short[] chars = new short[width*height];
-	        				for(int i = 0; i < width*height; i++) {
+	        				short[] chars = new short[width*height*2];
+	        				for(int i = 0; i < width*height*2; i++) {
 	        					chars[i] = packetData.readShort();
 	        				}
 	        				window = new TextWindow(width, height);
