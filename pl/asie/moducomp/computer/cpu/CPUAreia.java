@@ -549,6 +549,16 @@ public class CPUAreia implements ICPU
 				this.write16(0xF0000 | (0xFFFF & (int)this.regs[15]), (short)this.pc);
 				this.pc = imm;
 				break;
+			case UOP_PUSHF: {
+				this.regs[15] -= 2;
+				this.write16(0xF0000 | (0xFFFF & (int)this.regs[15]), (short)this.flags);
+				break;
+			}
+			case UOP_POPF: {
+				this.flags = (short)(0xFFFF & (int)this.read16(0xF0000 | (0xFFFF & (int)this.regs[15])));
+				this.regs[15] += 2;
+				break;
+			}
 			case UOP_RET: {
 				int pc_low = 0xFFFF & (int)this.read16(0xF0000 | (0xFFFF & (int)this.regs[15]));
 				this.regs[15] += 2;

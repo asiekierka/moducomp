@@ -35,7 +35,7 @@ public class IOHandlerTerminal implements IMemory
 				value |= (flags[i]?1:0)<<i;
 			return (byte)value;
 		} else if(addr >= 0x10 && addr < 0x3F) { // Last 24 keys
-			return (byte)(lastKeys[addr>>1] >> ((addr & 1) > 0 ? 8 : 0));
+			return (byte)(lastKeys[(addr - 0x10)>>1] >> ((addr & 1) > 0 ? 8 : 0));
 		} else if(addr == 0x09) { // Interrupt lane
 			return (byte)interruptLane;
 		} else return (byte)0;

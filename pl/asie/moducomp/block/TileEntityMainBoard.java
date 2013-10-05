@@ -145,7 +145,7 @@ public class TileEntityMainBoard extends TileEntityInventory implements Runnable
 	public void begin() {
 		isRunning = false;
 		// Reset window
-		this.window = new TextWindow(19, 7);
+		this.window = new TextWindow(19, 8);
 		this.sendClearPacket();
 		// Get memory
 		this.memory = getMemoryController();
