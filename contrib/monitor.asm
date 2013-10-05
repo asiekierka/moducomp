@@ -142,6 +142,14 @@ printMemory:
 	jsr putsF
 	ret
 
+char_goto:
+	jsr skipSpaces
+	move.b @11, #4
+	jsr getHex
+	move.w @15, #$0080
+	jsr $00000, @12
+	jmp parse_end
+
 char_write:
 	jsr skipSpaces
 	move.b @11, #4
@@ -214,19 +222,22 @@ char_info:
 char_enter: ; Parse!
 	move.w @1, #$06
 	st.w $FD008, @8, @1
-	add.w @15, #14 ; We won't be coming back.
+	move.w @15, #$0080
 	move.w @14, #2 ; Pointer
 	ld.b @1, $00002
 	cmp.b @1, #97
 	jc char_parse
 	sub.b @1, #32
 char_parse:
-	cmp.b @1, #87
-	jz char_write
 	cmp.b @1, #80
 	jz char_print
+	cmp.b @1, #87
+	jz char_write
 	cmp.b @1, #73
 	jz char_info
+	cmp.b @1, #71
+	jz char_goto
+
 parse_end:
 	move.w @14, @0
 parse_end_loop:
