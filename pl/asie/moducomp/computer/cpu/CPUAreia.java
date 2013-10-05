@@ -134,8 +134,9 @@ public class CPUAreia implements ICPU
 			this.memctl.write8(this, addr, val);
 		} else {
 			addr &= 0x7F;
-			// TODO: find specific triggers we can use
-			this.intregs[addr] = val;
+			if(addr >= 4 && addr < 8) { // Interrupt line area
+				this.intregs[addr] &= val;
+			} else this.intregs[addr] = val;
 		}
 
 		this.cycles++;
@@ -738,14 +739,24 @@ public class CPUAreia implements ICPU
 	}
 
 	private int waitCycles;
+	private int interruptVector = -1;
 	
 	public void wait(int cycles) {
 		waitCycles += cycles;
 	}
 	
 	public boolean interrupt(int line) {
-		// TODO
-		return false;
+		if(this.cycles < 2) return false; // Give CPU time to ramp up
+		// Set the line
+		int addr = 4 + (line>>3);
+		int pos = 1 << (line&7);
+		this.intregs[addr] |= (byte)pos;
+		// Get interrupt vector
+		int vector = (int)(0xFF & intregs[0]);
+		vector |= (int)(0xFF & intregs[1]) << 8;
+		vector |= (int)(0x0F & intregs[2]) << 16;
+		interruptVector = vector;
+		return true;
 	}
 	
 	// Under profiling, Java says this is the bottleneck.
@@ -758,6 +769,10 @@ public class CPUAreia implements ICPU
 		{
 			while((cyc_end - this.cycles) > 0)
 			{
+				if(interruptVector >= 0) {
+					this.pc = interruptVector;
+					interruptVector = -1;
+				}
 				if(waitCycles > 0) {
 					if((cyc_end - this.cycles) <= waitCycles) {
 						this.cycles += waitCycles;
