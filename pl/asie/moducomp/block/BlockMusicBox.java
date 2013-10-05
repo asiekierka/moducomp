@@ -70,7 +70,9 @@ public class BlockMusicBox extends BlockMachine implements ITileEntityOwner {
             world.scheduleBlockUpdate(x, y, z, this.blockID, 4);
             world.setBlockMetadataWithNotify(x, y, z, 1, 4);
             // Rewind paper tape.
-            TileEntityMusicBox temb = (TileEntityMusicBox)world.getBlockTileEntity(x, y, z);
+        	TileEntity te = world.getBlockTileEntity(x, y, z);
+        	if(!(te instanceof TileEntityMusicBox)) return;
+            TileEntityMusicBox temb = (TileEntityMusicBox)te;
             ItemStack stack = temb.getStackInSlot(0);
             if(stack != null && stack.getItem() instanceof ItemPaperTape) {
             	ItemPaperTape tapeHandler = (ItemPaperTape)stack.getItem();
@@ -87,7 +89,9 @@ public class BlockMusicBox extends BlockMachine implements ITileEntityOwner {
     public void updateTick(World world, int x, int y, int z, Random random)
     {
         if (!world.isRemote) {
-            TileEntityMusicBox temb = (TileEntityMusicBox)world.getBlockTileEntity(x, y, z);
+        	TileEntity te = world.getBlockTileEntity(x, y, z);
+        	if(!(te instanceof TileEntityMusicBox)) return;
+            TileEntityMusicBox temb = (TileEntityMusicBox)te;
             if(temb.playNote()) world.scheduleBlockUpdate(x, y, z, this.blockID, getMusicSpeed()); // Try playing another note.
         }
     }
