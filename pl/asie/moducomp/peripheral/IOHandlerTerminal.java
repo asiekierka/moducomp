@@ -58,7 +58,7 @@ public class IOHandlerTerminal implements IMemory
 	
 	public void write8(ICPU cpu, int addr, byte val)
 	{
-		short color = 32767;
+		short color = 15;
 		if(addr == 0x0A) { // Send low
 			lowChar = val;
 			if(flags[FLAG_OUTPUT_SIZE]) // Use bytes

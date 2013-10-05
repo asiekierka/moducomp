@@ -6,13 +6,18 @@ public class TextWindow {
 	public static final int TAB_SIZE = 4;
 	public final int width, height;
 	private short[] display;
+	private short[] palette;
 	public int x,y;
-	private short lastColor = 32767;
+	private short lastColor = 15;
 	
 	public TextWindow(int width, int height) {
 		this.width = width;
 		this.height = height;
 		this.display = new short[width*height*2];
+		this.palette = new short[256];
+		this.palette[0] = 0;
+		for(int i = 1; i < 256; i++)
+			this.palette[i] = 32767;
 		this.x = 0;
 		this.y = 0;
 	}
@@ -72,6 +77,13 @@ public class TextWindow {
 		}
 	}
 	
+	public short[] getPalette() {
+		return this.palette;
+	}
+
+	public short getColor(byte color) {
+		return this.palette[(int)0xFF & color];
+	}
 	public short[] getCharArray() {
 		return this.display;
 	}
