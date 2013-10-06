@@ -1,6 +1,7 @@
 package pl.asie.moducomp.peripheral;
 
 import net.minecraft.item.ItemStack;
+import pl.asie.moducomp.ModularComputing;
 import pl.asie.moducomp.api.IItemTape;
 import pl.asie.moducomp.api.computer.ICPU;
 import pl.asie.moducomp.api.computer.IMemory;
@@ -9,7 +10,7 @@ import pl.asie.moducomp.block.TileEntityTapeReader;
 
 public class IOHandlerTapeReader extends PeripheralBasic implements IMemory, Runnable {
 
-	private static final int SPEED = 1000; // in MHz, for reading one byte
+	private static final int SPEED = 7; // in milliseconds
 	private static final byte memoryMapFinal[] = {
 		MAP_BYTE, // 0x04: FLAGS
 		MAP_BYTE, // 0x05: INTERRUPT LANE
@@ -50,7 +51,7 @@ public class IOHandlerTapeReader extends PeripheralBasic implements IMemory, Run
 				break;
 		}
 	}
-	
+
 	@Override
 	public void onWriteByte(ICPU cpu, int addr) {
 		switch(addr) {
@@ -68,9 +69,11 @@ public class IOHandlerTapeReader extends PeripheralBasic implements IMemory, Run
 			case 0x07: // SEEK
 				this.seekCPU = cpu;
 				this.seekBytes = readShort(0x06);
-				intregs[0x09] = 1;
-				writeShort(0x06, (short)0);
-				new Thread(this).start();
+				synchronized(this) {
+					intregs[0x09] = 1;
+					writeShort(0x06, (short)0);
+					new Thread(this).start();
+				}
 				break;
 		}
 	}
@@ -84,15 +87,17 @@ public class IOHandlerTapeReader extends PeripheralBasic implements IMemory, Run
 		IItemTape handler = tapeReader.getHandler();
 		if(handler == null) return;
 		
-		int bytes = Math.abs(handler.seek(tape, seekBytes));
+		int bytes = handler.seek(tape, seekBytes);
 		long time = bytes * SPEED;
-		try { Thread.sleep(time/1000, (int)(time%1000)*1000); }
+		try { Thread.sleep(time); }
 		catch(Exception e) { e.printStackTrace(); }
-		
-		setReadByte();
-		writeShort(0x06, (short)bytes);
+
 		int interruptLane = intregs[0x05]&31;
-		intregs[0x09] = 0;
+		synchronized(this) {
+			setReadByte();
+			writeShort(0x06, (short)bytes);
+			intregs[0x09] = 0;
+		}
 		if(interruptLane >= 0 && interruptLane < 28)
 			seekCPU.interrupt(interruptLane);
 	}

@@ -27,17 +27,16 @@ detectRAMEnd:
 	; Check for terminal
 detectTerminal:
 	; Start looking
-	move.w @8, #$0003
+	move.w @8, @0
 detectionLoop:
-	ld.b @14, $FD000, @8
+	ld.b @14, $FD003, @8
 	cmp.w @14, #$0001
 	jz detectionEnd
 	add.w @8, #$0100
-	cmp.w @8, #$1003
+	cmp.w @8, #$1000
 	jz halt
 	jmp detectionLoop
 detectionEnd:
-	sub.b @8, #3
 	; Check if any RAM is installed
 	cmp.w @9, #$0000
 	jz halt
@@ -183,6 +182,80 @@ char_write_loop:
 	jz parse_end ; Over
 	jmp char_write_loop
 
+try_load_tape:
+detect_tape:
+	; Start looking
+	move.w @10, @0
+detect_tape_loop:
+	ld.b @12, $FD003, @10
+	cmp.b @12, #2
+	jz detect_tape_found
+	add.w @10, #$0100
+	cmp.w @10, #$1000
+	jnz detect_tape_loop
+	ret
+detect_tape_found:
+	; @13 - temp
+	; @12 - constant dot
+	; @11 - length
+	; @10 - tape pointer
+	cli ; No interrupts, we're going to use polling as it is easier
+	move.w @1, #loading
+	jsr putsF
+	move.w @12, #46
+	move.w @11, @0
+tape_read:
+	; Set seek
+	move.w @13, #1
+	st.w $FD006, @10, @13
+tape_read_draw_dot: ; While reading :3
+	move.w @13, @11
+	and.w @13, #$000F
+	jnz tape_read_loop1 ; No dot
+	st.b $FD008, @8, @12
+tape_read_loop1:
+	nop
+	ld.b @13, $FD009, @10
+	cmp.b @13, #1
+	jz tape_read_loop1 ; Loaded?
+tape_read_read:
+	ld.w @13, $FD006, @10 ; Check seek amount
+	cmp.w @13, #1
+	jnz tape_read_end ; Not equal to 1 seek?
+	ld.b @13, $FD008, @10
+	st.b $00000, @5, @13 ; Write to memory
+	add.w @5, #1
+	add.w @11, #1
+tape_read_finish:
+	cmp.w @6, @11
+	jnz tape_read ; Read all? If not, jump
+tape_read_end:
+	move.w @1, #ok_string
+	jsr putsF
+	jmp parse_end
+
+; @4 - current pos
+; @5 - pos
+; @6 - length
+; @7 - text length
+; @8, @9 - reserved
+; @10-@13 - tmp
+; @14 - text pointer
+char_load:
+	jsr skipSpaces
+	move.b @11, #4
+	jsr getHex
+	move.w @5, @12
+	jsr skipSpaces
+	move.b @11, #4
+	jsr getHex
+	move.w @6, @12
+char_load_begin:
+	jsr try_load_tape
+	move.w @1, #device_not_found
+	jsr putsF
+	jmp parse_end
+
 char_print:
 	move.w @3, @0 ; Reset seg
 	move.w @6, #$10 ; Default length
@@ -284,6 +357,8 @@ char_parse:
 	jz char_info
 	cmp.b @1, #71
 	jz char_goto
+	cmp.b @1, #76
+	jz char_load
 
 parse_end:
 	move.w @14, @0
@@ -414,11 +489,17 @@ load_table:
 no_ram_string:
 	.db "NO RAM FOUND", 0
 ram_amount_string:
-	.db "0 BYTES OK", 0
+	.db "0 BYTES "
+ok_string:
+	.db "OK", 0
 sp_string:
 	.db "SP: F", 0
 print_sep_string:
 	.db " |", 0
+device_not_found:
+	.db "DEVICE NOT FOUND", 0
+loading:
+	.db "LOADING", 0
 
 vec_cli_idle:
 	.dw halt
