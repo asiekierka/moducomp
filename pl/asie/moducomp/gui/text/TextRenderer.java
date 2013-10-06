@@ -10,15 +10,11 @@ import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.util.ResourceLocation;
 
 public class TextRenderer {
-	private static final ResourceLocation[] textures = {
-		new ResourceLocation("moducomp", "textures/fonts/font_black.png"),
-		new ResourceLocation("moducomp", "textures/fonts/font_white.png")
-	};
+	private static final ResourceLocation texture = new ResourceLocation("moducomp", "textures/fonts/font_white.png");
 	
 	public void drawLetter(Gui gui, TextureManager tm, TextWindow window, int x, int y, int color, short chr) {
 		if(chr == 0) return;
 		color &= 32767;
-		ResourceLocation texture = textures[1];
 		// BG
 		int realColor = window.getColor((byte)(color >> 8));
 		int red = (int)(((realColor >> 10) & 31));
@@ -34,12 +30,11 @@ public class TextRenderer {
 		green = (int)(((realColor >> 5) & 31));
 		blue = (int)((realColor & 31));			
         GL11.glColor4f(red/31.0f, green/31.0f, blue/31.0f, 1.0f);
-		tm.bindTexture(texture);
+		tm.bindTexture(this.texture);
 		gui.drawTexturedModalRect(x, y, (chr & 31)*8, (chr >> 5)*8, 8, 8);
 	}
 	
 	public void renderWindow(Gui gui, TextureManager tm, TextWindow window, int xp, int yp, int color) {
-		ResourceLocation texture = textures[color % textures.length];
 		short[] display = window.getCharArray();
 		for(int y = 0; y < window.height; y++) {
 			for(int x = 0; x < window.width; x++) {
