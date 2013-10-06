@@ -10,12 +10,12 @@ import pl.asie.moducomp.block.TileEntityTapeReader;
 
 public class IOHandlerTapeReader extends PeripheralBasic implements IMemory, Runnable {
 
-	private static final int SPEED = 7; // in milliseconds
+	private static final int SPEED = 10; // in milliseconds, per byte
 	private static final byte memoryMapFinal[] = {
 		MAP_BYTE, // 0x04: FLAGS
 		MAP_BYTE, // 0x05: INTERRUPT LANE
 		MAP_SHORT, // 0x06-0x07: SEEK (SIGNED) - SENDS INTERRUPT, ON READ - AMOUNT OF BYTES LAST SEEKED (UNSIGNED)
-		MAP_BYTE | MAP_NO_WRITE, // 0x08: CURRENT BYTE
+		MAP_BYTE, // 0x08: CURRENT BYTE - WRITE TO PUNCH HOLES
 		MAP_BYTE | MAP_NO_WRITE // 0x09: IS READING?
 	};
 	
@@ -59,6 +59,13 @@ public class IOHandlerTapeReader extends PeripheralBasic implements IMemory, Run
 				int value = (int)0xFF & intregs[addr];
 				for(int i = 0; i < 8; i++)
 					flags[i] = (value&(1<<i)) > 0;
+				break;
+			case 0x08: // BYTE
+				ItemStack tape = tapeReader.getTape();
+				IItemTape handler = tapeReader.getHandler();
+				if(handler == null) return;
+				byte current = handler.getByte(tape, 0);
+				handler.setByte(tape, (byte)(current | intregs[addr]), 0);
 				break;
 		}
 	}
