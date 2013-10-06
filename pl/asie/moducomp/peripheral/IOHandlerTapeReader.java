@@ -22,6 +22,7 @@ public class IOHandlerTapeReader extends PeripheralBasic implements IMemory, Run
 		super((short)0xA51E, (byte)0x02, (byte)0x02, memoryMapFinal);
 		this.tapeReader = tileEntity;
 		this.intregs[0x05] = 1; // Default
+		this.flags = new boolean[8];
 		setReadByte();
 	}
 	
@@ -37,6 +38,7 @@ public class IOHandlerTapeReader extends PeripheralBasic implements IMemory, Run
 			intregs[0x08] = handler.getByte(tape, 0);
 		}
 	}
+	
 	@Override
 	public void onReadByte(ICPU cpu, int addr) {
 		switch(addr) {

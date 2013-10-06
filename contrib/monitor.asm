@@ -194,6 +194,8 @@ char_print:
 	sub.w @12, #1
 	cmp.w @14, @12
 	jnc char_print_fin ; No seg or len
+	cmp.w @11, @0
+	jnz char_print_noSegment ; Did not read all 4
 	; Check for segment
 	add.w @14, #1
 	ld.b @13, $00000, @14
@@ -206,13 +208,11 @@ char_print_segment:
 	or.w @5, @13 ; @5 now stores low 16 bits, @12 stores high 16 bits
 	lsr.w @12, #12 ; @12 now stores segment
 	move.w @3, @12
-	add.w @14, #1
 char_print_noSegment:
 	move.w @12, @7
 	sub.w @12, #1
 	cmp.w @14, @12
-	jnc char_print_fin ; No len
-	sub.w @14, #1
+	jnc char_print_fin ; No seg or len
 	jsr skipSpaces
 	move.b @11, #4
 	jsr getHex
