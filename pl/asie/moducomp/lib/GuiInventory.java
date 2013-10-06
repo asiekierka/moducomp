@@ -29,6 +29,7 @@ public class GuiInventory extends GuiContainer
 
 	public GuiInventory(InventoryPlayer inventoryPlayer, TileEntityInventory tileEntity, ContainerInventory inventory, int xs, int ys, String textureName) {
 		super(inventory);
+		this.inventorySlots = inventory;
 		this.tileEntity = tileEntity;
 		this.xSize = xs;
 		this.ySize = ys;

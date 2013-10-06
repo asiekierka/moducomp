@@ -16,9 +16,9 @@ import net.minecraft.tileentity.TileEntity;
 public class ContainerMainBoard extends ContainerInventory {
 	protected TileEntityMainBoard tileEntity;
 
-	public ContainerMainBoard(InventoryPlayer inventoryPlayer, TileEntityMainBoard tileEntity2) {
+	public ContainerMainBoard(InventoryPlayer inventoryPlayer, TileEntityMainBoard tileEntity) {
 		super(1);
-		tileEntity = tileEntity2;
+		this.tileEntity = tileEntity;
 		addSlotToContainer(new SlotTyped(IItemCPU.class, tileEntity, 0, 80, 20));
 		bindPlayerInventory(inventoryPlayer, 8, 52);
 	}

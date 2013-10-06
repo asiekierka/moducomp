@@ -10,6 +10,8 @@ import pl.asie.moducomp.gui.ContainerMusicBox;
 import pl.asie.moducomp.gui.ContainerRAMBoard;
 import pl.asie.moducomp.gui.ContainerTapeReader;
 import pl.asie.moducomp.gui.GuiMainBoard;
+import pl.asie.moducomp.gui.GuiMusicBox;
+import pl.asie.moducomp.gui.GuiRAMBoard;
 import pl.asie.moducomp.gui.GuiTerminal;
 import pl.asie.moducomp.gui.GuiTapeReader;
 import pl.asie.moducomp.lib.ContainerInventory;
@@ -50,18 +52,18 @@ public class GuiHandler implements IGuiHandler {
             	return new GuiTapeReader(player.inventory, (TileEntityTapeReader) tileEntity);
             }
             else if(tileEntity instanceof TileEntityMusicBox){
-                return new GuiInventory(player.inventory, (TileEntityInventory) tileEntity, 
-                		(ContainerInventory) new ContainerMusicBox(player.inventory, (TileEntityMusicBox) tileEntity),
+                return new GuiMusicBox(player.inventory, (TileEntityInventory) tileEntity, 
+                		new ContainerMusicBox(player.inventory, (TileEntityMusicBox) tileEntity),
                 		176, 134, "one_slot");
             }
             else if(tileEntity instanceof TileEntityRAMBoard) {
-                return new GuiInventory(player.inventory, (TileEntityInventory) tileEntity, 
-                		(ContainerInventory) new ContainerRAMBoard(player.inventory, (TileEntityRAMBoard) tileEntity),
+                return new GuiRAMBoard(player.inventory, (TileEntityInventory) tileEntity, 
+                		new ContainerRAMBoard(player.inventory, (TileEntityRAMBoard) tileEntity),
                 		176, 185, "ram_board");
             }
             else if(tileEntity instanceof TileEntityMainBoard) {
                 return new GuiMainBoard(player.inventory, (TileEntityInventory) tileEntity, 
-                		(ContainerInventory) new ContainerMainBoard(player.inventory, (TileEntityMainBoard) tileEntity),
+                		new ContainerMainBoard(player.inventory, (TileEntityMainBoard) tileEntity),
                 		176, 134, "one_slot");
             }
             else if(tileEntity instanceof TileEntityTerminal) {

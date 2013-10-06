@@ -16,7 +16,7 @@ import pl.asie.moducomp.lib.TileEntityInventory;
 public class GuiMainBoard extends GuiInventory {
 
 	public GuiMainBoard(InventoryPlayer inventoryPlayer,
-			TileEntityInventory tileEntity, ContainerInventory inventory,
+			TileEntityInventory tileEntity, ContainerMainBoard inventory,
 			int xs, int ys, String textureName) {
 		super(inventoryPlayer, tileEntity, inventory, xs, ys, textureName);
 	}

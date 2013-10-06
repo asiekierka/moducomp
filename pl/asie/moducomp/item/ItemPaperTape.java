@@ -31,6 +31,10 @@ public class ItemPaperTape extends Item implements IItemTape {
 			stack.setTagCompound(compound);
 		} else {
 			NBTTagCompound compound = stack.getTagCompound();
+			if(!compound.hasKey("TapePosition") || !compound.hasKey("TapeData")) {
+				compound.setInteger("TapePosition", 0);
+				compound.setByteArray("TapeData", new byte[getLength(stack)]);
+			}
 			if(compound.getByteArray("TapeData").length != getLength(stack))
 				compound.setByteArray("TapeData", new byte[getLength(stack)]);
 			stack.setTagCompound(compound);

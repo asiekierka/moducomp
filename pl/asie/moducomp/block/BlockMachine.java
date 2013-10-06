@@ -10,6 +10,8 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
 public abstract class BlockMachine extends BlockContainer {
+	private int guiID;
+	
     public BlockMachine(int id, String name) 
     {
             super(id, Material.circuits);
@@ -17,6 +19,15 @@ public abstract class BlockMachine extends BlockContainer {
     		this.setUnlocalizedName(name);
     		this.setCreativeTab(ModularComputing.instance.tab);
     		this.setBlockBounds(0.0F, 0.0F, 0.0F, 1.0F, 1.0F, 1.0F);
+    		this.guiID = BlockMachine.getUniqueGuiID();
+    		ModularComputing.instance.logger.info("Gui ID for "+name+" is "+this.guiID);
+    }
+    
+    public static int nextGuiID = 0;
+    
+    public static int getUniqueGuiID() {
+    	nextGuiID++;
+    	return nextGuiID;
     }
     
     public boolean isOpaqueCube() { return false; }
@@ -25,7 +36,7 @@ public abstract class BlockMachine extends BlockContainer {
     @Override
 	public boolean onBlockActivated(World world, int x, int y, int z, EntityPlayer player, int par6, float par7, float par8, float par9) {
 		if(!world.isRemote || player.isSneaking()) {
-			player.openGui(ModularComputing.instance, 0, world, x, y, z);
+			player.openGui(ModularComputing.instance, this.guiID, world, x, y, z);
 		}
 		return true;
 	}
