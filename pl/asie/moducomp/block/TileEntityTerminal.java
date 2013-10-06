@@ -19,6 +19,7 @@ import pl.asie.moducomp.computer.memory.MemoryHandlerROM;
 import pl.asie.moducomp.gui.text.TextWindow;
 import pl.asie.moducomp.item.ItemPaperTape;
 import pl.asie.moducomp.lib.Helper;
+import pl.asie.moducomp.lib.PacketSender;
 import pl.asie.moducomp.lib.TileEntityInventory;
 import pl.asie.moducomp.peripheral.IOHandlerDebugMC;
 import pl.asie.moducomp.peripheral.IOHandlerTerminal;
@@ -44,57 +45,49 @@ public class TileEntityTerminal extends TileEntityInventory implements IEntityPe
     public void print(short color, short chr, boolean send) {
     	this.window.print(color, chr);
     	if(send) {
-	        ByteArrayOutputStream bos = new ByteArrayOutputStream(32);
-	        DataOutputStream os = new DataOutputStream(bos);
+            PacketSender sender = new PacketSender();
+            sender.prefixTileEntity(this);
 	        try {
-	        	NetworkHandler.prefixTileEntity(this, os);
-	            os.writeByte(1);
-	            os.writeShort(color);
-	            os.writeShort(chr);
+	        	sender.stream.writeByte(1);
+	            sender.stream.writeShort(color);
+	            sender.stream.writeShort(chr);
 	        } catch(Exception e) { e.printStackTrace(); }
-	        PacketDispatcher.sendPacketToAllAround(this.xCoord, this.yCoord, this.zCoord, Math.sqrt(this.getMaxRenderDistanceSquared()),
-	        		this.worldObj.provider.dimensionId, new Packet250CustomPayload("ModularC", bos.toByteArray()));
+	        sender.sendAround(this);
     	}
     }
     
     public void setPalette(int number, short col) {
     	this.window.setPaletteColor(number, col);
-        ByteArrayOutputStream bos = new ByteArrayOutputStream(32);
-        DataOutputStream os = new DataOutputStream(bos);
+        PacketSender sender = new PacketSender();
+        sender.prefixTileEntity(this);
         try {
-        	NetworkHandler.prefixTileEntity(this, os);
-            os.writeByte(7);
-            os.writeByte((byte)number);
-            os.writeShort(col);
+            sender.stream.writeByte(7);
+            sender.stream.writeByte((byte)number);
+            sender.stream.writeShort(col);
         } catch(Exception e) { e.printStackTrace(); }
-        PacketDispatcher.sendPacketToAllAround(this.xCoord, this.yCoord, this.zCoord, Math.sqrt(this.getMaxRenderDistanceSquared()),
-        		this.worldObj.provider.dimensionId, new Packet250CustomPayload("ModularC", bos.toByteArray()));
+        sender.sendAround(this);
     }
     
     public void keyExcludingPlayer(short chr, int excludedID) {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream(32);
-        DataOutputStream os = new DataOutputStream(bos);
+        PacketSender sender = new PacketSender();
+        sender.prefixTileEntity(this);
         try {
-        	NetworkHandler.prefixTileEntity(this, os);
-            os.writeByte(6);
-            os.writeShort(chr);
-            os.writeInt(excludedID);
+            sender.stream.writeByte(6);
+            sender.stream.writeShort(chr);
+            sender.stream.writeInt(excludedID);
         } catch(Exception e) { e.printStackTrace(); }
-        PacketDispatcher.sendPacketToAllAround(this.xCoord, this.yCoord, this.zCoord, Math.sqrt(this.getMaxRenderDistanceSquared()),
-        		this.worldObj.provider.dimensionId, new Packet250CustomPayload("ModularC", bos.toByteArray()));
+        sender.sendAround(this);
     }
     
     public void newline(boolean send) {
     	this.window.newline();
     	if(send) {
-	        ByteArrayOutputStream bos = new ByteArrayOutputStream(32);
-	        DataOutputStream os = new DataOutputStream(bos);
+	        PacketSender sender = new PacketSender();
+	        sender.prefixTileEntity(this);
 	        try {
-	        	NetworkHandler.prefixTileEntity(this, os);
-	            os.writeByte(4);
+	            sender.stream.writeByte(4);
 	        } catch(Exception e) { e.printStackTrace(); }
-	        PacketDispatcher.sendPacketToAllAround(this.xCoord, this.yCoord, this.zCoord, Math.sqrt(this.getMaxRenderDistanceSquared()),
-	        		this.worldObj.provider.dimensionId, new Packet250CustomPayload("ModularC", bos.toByteArray()));
+	        sender.sendAround(this);
     	}
     }
     
@@ -116,39 +109,36 @@ public class TileEntityTerminal extends TileEntityInventory implements IEntityPe
     
     public void setHardwareEcho(boolean is) {
     	hardwareEcho = is;
-        ByteArrayOutputStream bos = new ByteArrayOutputStream(32);
-        DataOutputStream os = new DataOutputStream(bos);
+    	PacketSender sender = new PacketSender();
+    	sender.prefixTileEntity(this);
         try {
-        	NetworkHandler.prefixTileEntity(this, os);
-            os.writeByte(5);
-            os.writeBoolean(is);
+        	sender.stream.writeByte(5);
+            sender.stream.writeBoolean(is);
         } catch(Exception e) { e.printStackTrace(); }
-        PacketDispatcher.sendPacketToAllAround(this.xCoord, this.yCoord, this.zCoord, Math.sqrt(this.getMaxRenderDistanceSquared()),
-        		this.worldObj.provider.dimensionId, new Packet250CustomPayload("ModularC", bos.toByteArray()));
+        sender.sendAround(this);
     }
     
     public void onPlayerOpen(Player player) {
     	if(this.window == null) clear(false);
-        ByteArrayOutputStream bos = new ByteArrayOutputStream(160 + (this.window.width * this.window.height * 2));
-        DataOutputStream os = new DataOutputStream(bos);
+    	PacketSender sender = new PacketSender();
+    	sender.prefixTileEntity(this);
         try {
-        	NetworkHandler.prefixTileEntity(this, os);
-            os.writeByte(2);
-            os.writeShort(this.window.width);
-            os.writeShort(this.window.height);
-            os.writeShort(this.window.x);
-            os.writeShort(this.window.y);
-            os.writeBoolean(this.hardwareEcho);
+            sender.stream.writeByte(2);
+            sender.stream.writeShort(this.window.width);
+            sender.stream.writeShort(this.window.height);
+            sender.stream.writeShort(this.window.x);
+            sender.stream.writeShort(this.window.y);
+            sender.stream.writeBoolean(this.hardwareEcho);
             short[] chars = this.window.getCharArray();
             for(int i = 0; i < this.window.width * this.window.height * 2; i++) {
-            	os.writeShort(chars[i]);
+            	sender.stream.writeShort(chars[i]);
             }
             short[] colors = this.window.getPalette();
             for(int i = 0; i < 64; i++) {
-            	os.writeShort(colors[i]);
+            	sender.stream.writeShort(colors[i]);
             }
         } catch(Exception e) { e.printStackTrace(); }
-        PacketDispatcher.sendPacketToPlayer(new Packet250CustomPayload("ModularC", bos.toByteArray()), player);
+        sender.sendToPlayer(player);
     }
     
     public IMemory init(ICPU cpu, IMemoryController memoryController) {
@@ -162,16 +152,14 @@ public class TileEntityTerminal extends TileEntityInventory implements IEntityPe
 	private void clear(boolean send) {
 		this.window = new TextWindow(30, 22);
 		if(send) {
-	        ByteArrayOutputStream bos = new ByteArrayOutputStream(32);
-	        DataOutputStream os = new DataOutputStream(bos);
+	        PacketSender sender = new PacketSender();
+	        sender.prefixTileEntity(this);
 	        try {
-	        	NetworkHandler.prefixTileEntity(this, os);
-	            os.writeByte(3);
-	            os.writeShort(this.window.width);
-	            os.writeShort(this.window.height);
+	        	sender.stream.writeByte(3);
+	            sender.stream.writeShort(this.window.width);
+	            sender.stream.writeShort(this.window.height);
 	        } catch(Exception e) { e.printStackTrace(); }
-	        PacketDispatcher.sendPacketToAllAround(this.xCoord, this.yCoord, this.zCoord, Math.sqrt(this.getMaxRenderDistanceSquared()),
-	        		this.worldObj.provider.dimensionId, new Packet250CustomPayload("ModularC", bos.toByteArray()));
+	        sender.sendAround(this);
 		}
     }
     

@@ -12,6 +12,7 @@ import pl.asie.moducomp.NetworkHandler;
 import pl.asie.moducomp.api.IItemTape;
 import pl.asie.moducomp.block.TileEntityTapeReader;
 import pl.asie.moducomp.item.ItemPaperTape;
+import pl.asie.moducomp.lib.PacketSender;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.entity.player.InventoryPlayer;
@@ -85,31 +86,30 @@ public class GuiTapeReader extends GuiContainer
         	} else if(key == 208) {
         		tapeHandler.seek(tape, 1);
         	} else changed = false;
-        	if(changed) PacketDispatcher.sendPacketToServer(sendPositionPacket()); // HACK!
+        	if(changed) sendPositionPacket(); // HACK!
         }
     }
    
-    private Packet250CustomPayload sendPositionPacket() {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream(32);
-        DataOutputStream os = new DataOutputStream(bos);
+    private void sendPositionPacket() {
+    	PacketSender sender = new PacketSender();
+    	sender.prefixTileEntity(this.tapeReaderEntity);
         try {
-        	NetworkHandler.prefixTileEntity(this.tapeReaderEntity, os);
-            os.writeByte(2);
-            os.writeInt(this.tapeReaderEntity.getPosition());
+            sender.stream.writeByte(2);
+            sender.stream.writeInt(this.tapeReaderEntity.getPosition());
         } catch(Exception e) { e.printStackTrace(); }
-        return new Packet250CustomPayload("ModularC", bos.toByteArray());
+        sender.sendServer();
     }
     
-    private Packet250CustomPayload sendBitSetPacket(byte offset, byte shift) {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream(32);
-        DataOutputStream os = new DataOutputStream(bos);
+    private void sendBitSetPacket(byte offset, byte shift) {
+    	PacketSender sender = new PacketSender();
+    	sender.prefixTileEntity(this.tapeReaderEntity);
         try {
-        	NetworkHandler.prefixTileEntity(this.tapeReaderEntity, os);
-            os.writeByte(1);
-            os.writeInt(this.tapeReaderEntity.getPosition());
-            os.writeByte(offset); os.writeByte(shift);
+        	sender.stream.writeByte(1);
+            sender.stream.writeInt(this.tapeReaderEntity.getPosition());
+            sender.stream.writeByte(offset);
+            sender.stream.writeByte(shift);
         } catch(Exception e) { e.printStackTrace(); }
-        return new Packet250CustomPayload("ModularC",bos.toByteArray());
+        sender.sendServer();
     }
     @Override
     protected void mouseClicked(int x, int y, int button) {
@@ -129,15 +129,14 @@ public class GuiTapeReader extends GuiContainer
             		int ypos = yo + TAPE_Y + (i*TAPE_YOFF);
             		if(y >= ypos && y < ypos+9) { offset = i; break; }
             	}
-            	if(offset >= -3) { // Y found
-            		PacketDispatcher.sendPacketToServer(sendBitSetPacket((byte)offset, (byte)bit));
-            	}
+            	if(offset >= -3) // Y found
+            		sendBitSetPacket((byte)offset, (byte)bit);
             }
         }
     }
     
     public void onGuiClosed() {
-    	PacketDispatcher.sendPacketToServer(sendPositionPacket());
+    	sendPositionPacket();
     }
     
     /**

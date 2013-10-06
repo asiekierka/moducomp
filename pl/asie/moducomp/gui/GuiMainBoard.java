@@ -10,6 +10,7 @@ import net.minecraft.network.packet.Packet250CustomPayload;
 import pl.asie.moducomp.NetworkHandler;
 import pl.asie.moducomp.lib.ContainerInventory;
 import pl.asie.moducomp.lib.GuiInventory;
+import pl.asie.moducomp.lib.PacketSender;
 import pl.asie.moducomp.lib.TileEntityInventory;
 
 public class GuiMainBoard extends GuiInventory {
@@ -25,19 +26,18 @@ public class GuiMainBoard extends GuiInventory {
     {
     	super.keyTyped(keyChar, keyCode);
         if(keyCode == 200) { // Press UP to play (TODO MAKE THIS REAL)
-        	PacketDispatcher.sendPacketToServer(sendTurnOnPacket());
+        	turnOn();
         }
     }
     
-    private Packet250CustomPayload sendTurnOnPacket() {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream(32);
-        DataOutputStream os = new DataOutputStream(bos);
+    private void turnOn() {
+        PacketSender sender = new PacketSender();
+        sender.prefixTileEntity(this.tileEntity);
         try {
-        	NetworkHandler.prefixTileEntity(this.tileEntity, os);
-            os.writeByte(1);
-            os.writeBoolean(true);
+        	sender.stream.writeByte(1);
+            sender.stream.writeBoolean(true);
         } catch(Exception e) { e.printStackTrace(); }
-        return new Packet250CustomPayload("ModularC", bos.toByteArray());
+        sender.sendServer();
     }
     
 }

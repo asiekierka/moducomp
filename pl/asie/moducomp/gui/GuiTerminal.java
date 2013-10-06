@@ -21,6 +21,7 @@ import pl.asie.moducomp.item.ItemPaperTape;
 import pl.asie.moducomp.lib.ContainerInventory;
 import pl.asie.moducomp.lib.ContainerNull;
 import pl.asie.moducomp.lib.GuiInventory;
+import pl.asie.moducomp.lib.PacketSender;
 import pl.asie.moducomp.lib.TileEntityInventory;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
@@ -62,7 +63,12 @@ public class GuiTerminal extends GuiContainer implements IGUIText
 		this.texture = new ResourceLocation("moducomp", "textures/gui/terminal.png");
 		this.xSize = 256;
 		this.ySize = 196;
-		PacketDispatcher.sendPacketToServer(sendGetWindowPacket());
+    	PacketSender sender = new PacketSender();
+    	sender.prefixTileEntity(this.tileEntity);
+        try {
+            sender.stream.writeByte(2);
+        } catch(Exception e) { e.printStackTrace(); }
+        sender.sendServer();
 	}
 
     /**
@@ -70,16 +76,6 @@ public class GuiTerminal extends GuiContainer implements IGUIText
      */
     protected void drawGuiContainerForegroundLayer(int par1, int par2)
     {
-    }
-
-    private Packet250CustomPayload sendGetWindowPacket() {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream(32);
-        DataOutputStream os = new DataOutputStream(bos);
-        try {
-        	NetworkHandler.prefixTileEntity(this.tileEntity, os);
-            os.writeByte(2);
-        } catch(Exception e) { e.printStackTrace(); }
-        return new Packet250CustomPayload("ModularC", bos.toByteArray());
     }
     
     int keysTyped = 0;
@@ -96,14 +92,13 @@ public class GuiTerminal extends GuiContainer implements IGUIText
         	} catch(Exception e) { }
         	int key = (int)keyChar;
         	ModularComputing.instance.logger.info("Pressed key " + key);
-            ByteArrayOutputStream bos = new ByteArrayOutputStream(32);
-            DataOutputStream os = new DataOutputStream(bos);
+            PacketSender sender = new PacketSender();
+            sender.prefixTileEntity(this.tileEntity);
             try {
-            	NetworkHandler.prefixTileEntity(this.tileEntity, os);
-                os.writeByte(3);
-                os.writeShort((short)key);
+            	sender.stream.writeByte(3);
+                sender.stream.writeShort((short)key);
             } catch(Exception e) { e.printStackTrace(); }
-            PacketDispatcher.sendPacketToServer(new Packet250CustomPayload("ModularC", bos.toByteArray()));
+            sender.sendServer();
             if(hardwareEcho) {
             	try {
             		keysTyped++;
