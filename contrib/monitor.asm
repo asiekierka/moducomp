@@ -52,19 +52,20 @@ detectionEnd:
 	st.b $FFF82, @1
 
 	; Set color
-	move.b @1, #$0F
-	st.b $FD016, @8, @1
+	move.w @1, #$000F
+	st.b $FD012, @8, @1
+	st.w $FD00A, @8, @1
 	move.w @1, #$7F04
-	st.w $FD014, @8, @1
+	st.w $FD010, @8, @1
 
 	jsr printMemory
 prompt:
-	st.b $FD00C, @8, @0
+	st.b $FD00E, @8, @0
 	move.w @7, #$0002 ; Char begin here
 
 	; Allow echoing
 	move.w @1, #$07
-	st.w $FD008, @8, @1
+	st.w $FD004, @8, @1
 
 	move.w @1, #prompt_string
 	jsr putsF
@@ -85,7 +86,7 @@ printHexLoop:
 	and.w @13, #$F000
 	lsr.w @13, #12
 	ld.b @12, hexChars, @13
-	st.b $FD00A, @8, @12
+	st.b $FD008, @8, @12
 	lsl.w @14, #4
 	sub.b @2, #1
 	jmp printHexLoop
@@ -202,7 +203,7 @@ char_print_loop:
 	cmp.w @6, #0
 	jz parse_end
 	move.w @1, #32
-	st.b $FD00A, @8, @1
+	st.b $FD008, @8, @1
 	ld.b @1, $00000, @5
 	asl.w @1, #8
 	move.w @2, #2
@@ -214,12 +215,12 @@ char_print_loop:
 	jnz char_print_loop
 	cmp.w @6, #0
 	jz parse_end
-	st.b $FD00C, @8, @0
+	st.b $FD00E, @8, @0
 	jmp char_print_fin
 
 char_info:
 	jsr printMemory
-	st.b $FD00C, @8, @0
+	st.b $FD00E, @8, @0
 	move.w @1, #sp_string
 	jsr putsF
 	move.w @2, #4
@@ -229,7 +230,7 @@ char_info:
 
 char_enter: ; Parse!
 	move.w @1, #$06
-	st.w $FD008, @8, @1
+	st.w $FD004, @8, @1
 	move.w @15, #$0080
 	move.w @14, #2 ; Pointer
 	ld.b @1, $00002
@@ -260,7 +261,7 @@ char_backspace: ; Remove char
 	ret
 
 int_vec_char:
-	ld.w @1, $FD010, @8
+	ld.w @1, $FD00C, @8
 	cmp.w @1, #0
 	jz int_vec_end
 	jsr int_vec_char_read
@@ -333,7 +334,7 @@ putsF_lp1:
 	and.b @1, @1
 	jz putsF_ret
 		add.w @13, #1
-		st.b $FD00A, @8, @1
+		st.b $FD008, @8, @1
 		jmp putsF_lp1
 putsF_ret:
 	ret
