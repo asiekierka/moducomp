@@ -2,8 +2,14 @@ package pl.asie.moducomp.block;
 
 import java.awt.Container;
 
+import pl.asie.moducomp.api.IEntityPeripheral;
+import pl.asie.moducomp.api.IItemTape;
+import pl.asie.moducomp.api.computer.ICPU;
+import pl.asie.moducomp.api.computer.IMemory;
+import pl.asie.moducomp.api.computer.IMemoryController;
 import pl.asie.moducomp.item.ItemPaperTape;
 import pl.asie.moducomp.lib.TileEntityInventory;
+import pl.asie.moducomp.peripheral.IOHandlerTapeReader;
 import mods.immibis.redlogic.api.wiring.IBundledEmitter;
 import mods.immibis.redlogic.api.wiring.IBundledWire;
 import mods.immibis.redlogic.api.wiring.IConnectable;
@@ -13,13 +19,24 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
-public class TileEntityTapeReader extends TileEntityInventory implements IBundledEmitter, IConnectable {
+public class TileEntityTapeReader extends TileEntityInventory implements IBundledEmitter, IConnectable, IEntityPeripheral {
 	public TileEntityTapeReader() {
 		super(1, 1, "block.moducomp.tape_reader");
 	}
 	
+	public IItemTape getHandler() {
+		ItemStack stack = getTape();
+		if(stack != null && stack.getItem() instanceof IItemTape)
+			return (IItemTape)stack.getItem();
+		else return null;
+	}
+	
+	public ItemStack getTape() {
+		return this.getStackInSlot(0);
+	}
+	
 	public void setBit(int position, byte offset, byte shift) {
-		ItemStack stack = this.getStackInSlot(0);
+		ItemStack stack = getTape();
 		if(stack != null && stack.getItem() instanceof ItemPaperTape) {
 			ItemPaperTape tapeHandler = (ItemPaperTape)stack.getItem();
 			tapeHandler.setPosition(stack, position);
@@ -31,7 +48,7 @@ public class TileEntityTapeReader extends TileEntityInventory implements IBundle
 	}
 	
 	public int getPosition() {
-		ItemStack stack = this.getStackInSlot(0);
+		ItemStack stack = getTape();
 		if(stack != null && stack.getItem() instanceof ItemPaperTape) {
 			ItemPaperTape tapeHandler = (ItemPaperTape)stack.getItem();
 			return tapeHandler.getPosition(stack);
@@ -40,7 +57,7 @@ public class TileEntityTapeReader extends TileEntityInventory implements IBundle
 	}
 	
 	public void setPosition(int position) {
-		ItemStack stack = this.getStackInSlot(0);
+		ItemStack stack = getTape();
 		if(stack != null && stack.getItem() instanceof ItemPaperTape) {
 			ItemPaperTape tapeHandler = (ItemPaperTape)stack.getItem();
 			tapeHandler.setPosition(stack, position);
@@ -49,7 +66,7 @@ public class TileEntityTapeReader extends TileEntityInventory implements IBundle
 	}
 	
 	protected void nextByte() {
-		ItemStack stack = this.getStackInSlot(0);
+		ItemStack stack = getTape();
 		if(stack != null && stack.getItem() instanceof ItemPaperTape) {
 			ItemPaperTape tapeHandler = (ItemPaperTape)stack.getItem();
 			tapeHandler.seek(stack, 1);
@@ -59,7 +76,7 @@ public class TileEntityTapeReader extends TileEntityInventory implements IBundle
 
 	@Override
 	public byte[] getBundledCableStrength(int blockFace, int toDirection) {
-		ItemStack stack = this.getStackInSlot(0);
+		ItemStack stack = getTape();
 		if(stack != null && stack.getItem() instanceof ItemPaperTape) {
 			ItemPaperTape tapeHandler = (ItemPaperTape)stack.getItem();
 			byte[] data = new byte[16];
@@ -80,5 +97,14 @@ public class TileEntityTapeReader extends TileEntityInventory implements IBundle
 	public boolean connectsAroundCorner(IWire wire, int blockFace,
 			int fromDirection) {
 		return false;
+	}
+
+	@Override
+	public IMemory init(ICPU cpu, IMemoryController memoryController) {
+		return new IOHandlerTapeReader(this);
+	}
+
+	@Override
+	public void deinit(ICPU cpu) {
 	}
 }
