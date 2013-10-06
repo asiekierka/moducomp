@@ -2,6 +2,7 @@ package pl.asie.moducomp.block;
 
 import pl.asie.moducomp.ModularComputing;
 import pl.asie.moducomp.lib.Helper;
+import pl.asie.moducomp.lib.ITileEntityOwner;
 import net.minecraft.block.BlockContainer;
 import net.minecraft.block.material.Material;
 import net.minecraft.creativetab.CreativeTabs;
@@ -9,7 +10,7 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
-public abstract class BlockMachine extends BlockContainer {
+public abstract class BlockMachine extends BlockContainer implements ITileEntityOwner {
 	private int guiID;
 	
     public BlockMachine(int id, String name) 
@@ -35,7 +36,13 @@ public abstract class BlockMachine extends BlockContainer {
     
     @Override
 	public boolean onBlockActivated(World world, int x, int y, int z, EntityPlayer player, int par6, float par7, float par8, float par9) {
-		if(!world.isRemote || player.isSneaking()) {
+    	// HACK HACK HACK HACK HACK HACK HACK
+    	if(!world.getBlockTileEntity(x, y, z).getClass().equals(this.getTileEntityClass())) {
+    		// Invalidate invalid TileEntity
+    		world.getBlockTileEntity(x, y, z).invalidate();
+    		world.setBlockTileEntity(x, y, z, this.createNewTileEntity(world));
+    	}
+    	if(!world.isRemote || player.isSneaking()) {
 			player.openGui(ModularComputing.instance, this.guiID, world, x, y, z);
 		}
 		return true;

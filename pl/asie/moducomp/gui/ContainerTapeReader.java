@@ -14,7 +14,7 @@ public class ContainerTapeReader extends ContainerInventory {
 	protected TileEntityTapeReader tileEntity;
 
 	public ContainerTapeReader(InventoryPlayer inventoryPlayer, TileEntityTapeReader te) {
-		super(1);
+		super(1, te);
 		tileEntity = te;
 		addSlotToContainer(new SlotTyped(ItemPaperTape.class, tileEntity, 0, 25, 55));
 		bindPlayerInventory(inventoryPlayer, 8, 85);

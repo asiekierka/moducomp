@@ -10,7 +10,11 @@ import net.minecraft.tileentity.TileEntity;
 
 public class ContainerInventory extends Container {
 	protected int iSize;
-	public ContainerInventory(int size) {iSize = size;}
+	protected TileEntity tileEntity;
+	public ContainerInventory(int size, TileEntity entity) {
+		iSize = size;
+		this.tileEntity = entity;
+	}
 	@Override
 	public boolean canInteractWith(EntityPlayer player) { return true; }
 	@Override

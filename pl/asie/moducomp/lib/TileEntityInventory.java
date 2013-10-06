@@ -57,29 +57,31 @@ public class TileEntityInventory extends TileEntity implements IInventory {
 		inventory[slot] = null;
 		return stack;
 	}
-    public ItemStack decrStackSize(int par1, int par2)
+    public ItemStack decrStackSize(int slot, int amount)
     {
-        if (this.inventory[par1] != null)
+        if (this.inventory[slot] != null)
         {
             ItemStack itemstack;
 
-            if (this.inventory[par1].stackSize <= par2)
+            if (this.inventory[slot].stackSize <= amount)
             {
-                itemstack = this.inventory[par1];
-                this.inventory[par1] = null;
+                itemstack = this.inventory[slot];
+                this.inventory[slot] = null;
                 this.onInventoryChanged();
+        		this.onInventoryChanged(slot);
                 return itemstack;
             }
             else
             {
-                itemstack = this.inventory[par1].splitStack(par2);
+                itemstack = this.inventory[slot].splitStack(amount);
 
-                if (this.inventory[par1].stackSize == 0)
+                if (this.inventory[slot].stackSize == 0)
                 {
-                    this.inventory[par1] = null;
+                    this.inventory[slot] = null;
                 }
 
                 this.onInventoryChanged();
+        		this.onInventoryChanged(slot);
                 return itemstack;
             }
         }
@@ -88,20 +90,6 @@ public class TileEntityInventory extends TileEntity implements IInventory {
             return null;
         }
     }
-    /*
-	public ItemStack decrStackSize(int slot, int count) {
-		ItemStack stack = getStackInSlot(slot);
-		ItemStack stackO = stack;
-		if(inventory[slot] != null) {
-			if(stack.stackSize > count)
-				stack = stack.splitStack(count);
-			if(stack.stackSize <= count || stack.stackSize == 0)
-				stack = null;
-		}
-		if(stack != stackO) { setInventorySlotContents(slot,stack); }
-		return stack;
-	}
-	*/
 	public boolean isItemValidForSlot(int i, ItemStack stack) {
 		if(i < 0 || i >= inventory.length) return false;
 		if(stack != null && stack.stackSize > maxStackSize) return false;
@@ -127,9 +115,10 @@ public class TileEntityInventory extends TileEntity implements IInventory {
         public void readFromNBT(NBTTagCompound tagCompound) {
                 super.readFromNBT(tagCompound);
                 NBTTagList tagList = tagCompound.getTagList("Inventory");
+                this.inventory = new ItemStack[this.getSizeInventory()];
                 for (int i = 0; i < tagList.tagCount(); i++) {
                         NBTTagCompound tag = (NBTTagCompound) tagList.tagAt(i);
-                        byte slot = tag.getByte("Slot");
+                        int slot = tag.getByte("Slot") & 255;
                         if (slot >= 0 && slot < inventory.length) {
                                 inventory[slot] = ItemStack.loadItemStackFromNBT(tag);
                         }

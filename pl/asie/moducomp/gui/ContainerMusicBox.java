@@ -14,9 +14,9 @@ import net.minecraft.tileentity.TileEntity;
 public class ContainerMusicBox extends ContainerInventory {
 	protected TileEntityMusicBox tileEntity;
 
-	public ContainerMusicBox(InventoryPlayer inventoryPlayer, TileEntityMusicBox tileEntity2) {
-		super(1);
-		tileEntity = tileEntity2;
+	public ContainerMusicBox(InventoryPlayer inventoryPlayer, TileEntityMusicBox tileEntity) {
+		super(1, tileEntity);
+		this.tileEntity = tileEntity;
 		addSlotToContainer(new SlotTyped(ItemPaperTape.class, tileEntity, 0, 80, 20));
 		bindPlayerInventory(inventoryPlayer, 8, 52);
 	}
