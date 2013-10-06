@@ -100,6 +100,29 @@ skipSpaces:
 	jz skipSpaces
 	ret
 
+isHex:
+	cmp.b @13, #48
+	jc isHexNot
+	cmp.b @13, #58
+	jnc isHexUp
+	sub.b @13, #48
+	ret
+isHexUp:
+	cmp.b @13, #71
+	jc isHexUp2
+	sub.b @13, #32
+	cmp.b @13, #71
+	jnc isHexNot
+isHexUp2:
+	cmp.b @13, #65
+	jnc isHexUp3
+isHexNot:
+	move.b @13, #255
+	ret
+isHexUp3:
+	sub.b @13, #55
+	ret
+
 ; @11 for max length
 getHex:
 	move.w @12, @0
@@ -109,11 +132,9 @@ getHexLoop:
 	move.w @13, @0
 	ld.b @13, $00000, @14
 	add.w @14, #1
-	cmp.b @13, #48
-	jc getHexEnd
-	cmp.b @13, #58
-	jnc getHexUp
-	sub.b @13, #48
+	jsr isHex
+	cmp.b @13, #255
+	jz getHexEnd ; over
 getHexSet:
 	lsl.w @12, #4
 	or.w @12, @13
@@ -121,17 +142,6 @@ getHexSet:
 	cmp.b @11, @0
 	jz getHexEnd
 	jmp getHexLoop
-getHexUp:
-	cmp.b @13, #71
-	jc getHexUp2
-	sub.b @13, #32
-	cmp.b @13, #71
-	jnc getHexEnd
-getHexUp2:
-	cmp.b @13, #65
-	jc getHexEnd
-	sub.b @13, #55
-	jmp getHexSet
 getHexEnd:
 	sub.w @14, #1
 	ret
@@ -174,6 +184,7 @@ char_write_loop:
 	jmp char_write_loop
 
 char_print:
+	move.w @3, @0 ; Reset seg
 	move.w @6, #$10 ; Default length
 	jsr skipSpaces
 	move.b @11, #4
@@ -182,7 +193,26 @@ char_print:
 	move.w @12, @7
 	sub.w @12, #1
 	cmp.w @14, @12
+	jnc char_print_fin ; No seg or len
+	; Check for segment
+	add.w @14, #1
+	ld.b @13, $00000, @14
+	jsr isHex
+	cmp.b @13, #255
+	jz char_print_noSegment
+char_print_segment:
+	move.w @12, @5
+	lsl.w @5, #4
+	or.w @5, @13 ; @5 now stores low 16 bits, @12 stores high 16 bits
+	lsr.w @12, #12 ; @12 now stores segment
+	move.w @3, @12
+	add.w @14, #1
+char_print_noSegment:
+	move.w @12, @7
+	sub.w @12, #1
+	cmp.w @14, @12
 	jnc char_print_fin ; No len
+	sub.w @14, #1
 	jsr skipSpaces
 	move.b @11, #4
 	jsr getHex
@@ -193,6 +223,10 @@ char_print:
 char_print_fin:
 	cmp.w @6, #0
 	jz parse_end
+	move.w @1, @3
+	lsl.w @1, #12
+	move.w @2, #1
+	jsr printHex
 	move.w @1, @5
 	move.w @2, #4
 	jsr printHex
@@ -204,8 +238,12 @@ char_print_loop:
 	jz parse_end
 	move.w @1, #32
 	st.b $FD008, @8, @1
-	ld.b @1, $00000, @5
-	asl.w @1, #8
+	move.w @12, @3
+	asl.w @12, #2 ; multiply by 5
+	add.w @12, @3
+	add.w @12, #load_table
+	jsr $F0000, @12
+	lsl.w @1, #8
 	move.w @2, #2
 	jsr printHex
 	add.w @5, #1
@@ -337,6 +375,40 @@ putsF_lp1:
 		st.b $FD008, @8, @1
 		jmp putsF_lp1
 putsF_ret:
+	ret
+
+load_table:
+	ld.b @1, $00000, @5
+	ret
+	ld.b @1, $10000, @5
+	ret
+	ld.b @1, $20000, @5
+	ret
+	ld.b @1, $30000, @5
+	ret
+	ld.b @1, $40000, @5
+	ret
+	ld.b @1, $50000, @5
+	ret
+	ld.b @1, $60000, @5
+	ret
+	ld.b @1, $70000, @5
+	ret
+	ld.b @1, $80000, @5
+	ret
+	ld.b @1, $90000, @5
+	ret
+	ld.b @1, $A0000, @5
+	ret
+	ld.b @1, $B0000, @5
+	ret
+	ld.b @1, $C0000, @5
+	ret
+	ld.b @1, $D0000, @5
+	ret
+	ld.b @1, $E0000, @5
+	ret
+	ld.b @1, $F0000, @5
 	ret
 
 no_ram_string:
