@@ -234,6 +234,14 @@ tape_read_end:
 	jsr putsF
 	jmp parse_end
 
+; Set color
+char_color:
+	jsr skipSpaces
+	move.b @11, #4
+	jsr getHex
+	st.w $FD010, @8, @12
+	jmp parse_end
+
 ; @4 - current pos
 ; @5 - pos
 ; @6 - length
@@ -359,6 +367,8 @@ char_parse:
 	jz char_goto
 	cmp.b @1, #76
 	jz char_load
+	cmp.b @1, #67
+	jz char_color
 
 parse_end:
 	move.w @14, @0
