@@ -33,7 +33,7 @@ public class PacketSender {
 	}
 	
 	public void sendAround(TileEntity te) {
-        PacketDispatcher.sendPacketToAllAround(te.xCoord, te.yCoord, te.zCoord, Math.sqrt(te.getMaxRenderDistanceSquared()),
+        PacketDispatcher.sendPacketToAllAround(te.xCoord, te.yCoord, te.zCoord, 24.0D,
         		te.worldObj.provider.dimensionId, this.getPacket());
 	}
 	
