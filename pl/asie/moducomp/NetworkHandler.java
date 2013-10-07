@@ -45,20 +45,25 @@ public class NetworkHandler implements IPacketHandler {
 			int commandType = packetData.readByte();
 			switch(commandType) {
 				case 1: { // TileEntity related
-					World world = DimensionManager.getWorld(packetData.readInt());
+					World world;
+					if(!(player instanceof EntityPlayerMP)) { // Client
+						world = ((EntityLivingBase)player).worldObj;
+						if(world.provider.dimensionId != packetData.readInt()) return;
+					} else world = DimensionManager.getWorld(packetData.readInt()); // Server
 	                int x = packetData.readInt();
 	                int y = packetData.readInt();
 	                int z = packetData.readInt();
 	                if(world == null) return;
 	                TileEntity tileEntity = world.getBlockTileEntity(x, y, z);
-	                parseTEPacket(manager, packetData, player, tileEntity);
+	                int block = world.getBlockId(x,  y,  z);
+	                parseTEPacket(manager, packetData, player, block, tileEntity);
 				} break;
 				default: break; // No command
 			}
 		} catch(Exception e) { e.printStackTrace(); }
 	}
 	
-	public void parseTEPacket(INetworkManager manager, DataInputStream packetData, Player player, TileEntity tileEntity) {
+	public void parseTEPacket(INetworkManager manager, DataInputStream packetData, Player player, int block, TileEntity tileEntity) {
 		try {
 	        if(tileEntity instanceof TileEntityTapeReader) {
 	        	TileEntityTapeReader tapeReader = (TileEntityTapeReader)tileEntity;
@@ -75,7 +80,7 @@ public class NetworkHandler implements IPacketHandler {
 	        	TileEntityMainBoard mainBoard = (TileEntityMainBoard)tileEntity;
 	        	int commandID = packetData.readUnsignedByte();
 	        	ModularComputing.instance.logger.info("Received Mainboard command #"+commandID+" on "+(!(player instanceof EntityPlayerMP) ? "client" : "server"));
-	        	if(player instanceof EntityPlayerMP) { // Client _> Server
+	        	if(player instanceof EntityPlayerMP) { // Client -> Server
 	        		switch(commandID) {
 	        			case 1: { // Start/stop CPU
 	        				boolean should = packetData.readBoolean();

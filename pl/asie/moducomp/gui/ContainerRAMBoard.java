@@ -20,7 +20,7 @@ public class ContainerRAMBoard extends ContainerInventory {
 		for(int i=0; i<16; i++) {
 			addSlotToContainer(new SlotTyped(IItemMemory.class, tileEntity, i, 53 + (18 * (i&3)), 17 + (18 * (i>>2))));
 		}
-		bindPlayerInventory(inventoryPlayer, 8, 102);
+		bindPlayerInventory(inventoryPlayer, 8, 103);
 	}
 	
 	@Override

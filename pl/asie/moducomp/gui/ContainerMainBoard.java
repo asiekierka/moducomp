@@ -20,7 +20,7 @@ public class ContainerMainBoard extends ContainerInventory {
 		super(1, tileEntity);
 		this.tileEntity = tileEntity;
 		addSlotToContainer(new SlotTyped(IItemCPU.class, tileEntity, 0, 80, 20));
-		bindPlayerInventory(inventoryPlayer, 8, 52);
+		bindPlayerInventory(inventoryPlayer, 8, 51);
 	}
 	
 	@Override

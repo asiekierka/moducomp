@@ -90,8 +90,8 @@ public class ModularComputing {
     	blockTapeReader = (BlockTapeReader) registerBlock(BlockTapeReader.class, "moducomp.tape_reader", 1920);
     	blockMusicBox = (BlockMusicBox) registerBlock(BlockMusicBox.class, "moducomp.music_box", 1921);
     	blockRAMBoard = (BlockRAMBoard) registerBlock(BlockRAMBoard.class, "moducomp.ram_board", 1922);
-    	blockMainBoard = (BlockMainBoard) registerBlock(BlockMainBoard.class, "moducomp:main_board", 1923);
-    	blockTerminal = (BlockTerminal) registerBlock(BlockTerminal.class, "moducomp:terminal", 1924);
+    	blockMainBoard = (BlockMainBoard) registerBlock(BlockMainBoard.class, "moducomp.main_board", 1923);
+    	blockTerminal = (BlockTerminal) registerBlock(BlockTerminal.class, "moducomp.terminal", 1924);
     	
     	itemPaperTape = (ItemPaperTape) registerItem(ItemPaperTape.class, "moducomp.paper_tape", 19200);
     	itemRAM = (ItemRAM) registerItem(ItemRAM.class, "moducomp.ram", 19201);
