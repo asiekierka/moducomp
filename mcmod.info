@@ -1,13 +1,14 @@
-[ {
-"modid": "moducomp",
-"name": "Modular Computing", 
-"description": "Adds a modular computing ecosystem and a few neat things."
-"version": "0.0.1",
-"credits": "By asie & greaser",
-"mcversion": "1.6.2",
-"url": "https://github.com/asiekierka/moducomp",
-"authors": ["asiekierka", "GreaseMonkey"],
-"parent":"",
-"screenshots": [],
-"dependencies": [ "mod_MinecraftForge" ]
-} ]
+[
+{
+	"modid": "moducomp",
+	"name": "Modular Computing", 
+	"description": "Adds a modular computing ecosystem and a few neat things.",
+	"version": "0.0.1-@BUILD@",
+	"credits": "By asie & greaser",
+	"url": "https://github.com/asiekierka/moducomp",
+	"authors": ["asiekierka", "GreaseMonkey"],
+	"parent": "",
+	"screenshots": [],
+	"dependencies": [ "mod_MinecraftForge" ]
+}
+]
