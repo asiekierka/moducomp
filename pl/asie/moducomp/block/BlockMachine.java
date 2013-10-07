@@ -31,8 +31,7 @@ public abstract class BlockMachine extends BlockContainer implements ITileEntity
     	return nextGuiID;
     }
     
-    public boolean isOpaqueCube() { return false; }
-    public boolean renderAsNormalBlock() { return false; }
+    public boolean renderAsNormalBlock() { return true; }
     
     public void onBlockDestroyed(World world, int x, int y, int z, int meta) {
     	TileEntity tileEntity = world.getBlockTileEntity(x, y, z);

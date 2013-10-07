@@ -11,8 +11,7 @@ import cpw.mods.fml.common.ICraftingHandler;
 
 public class CraftingHandler implements ICraftingHandler {
 
-	@Override
-	public void onCrafting(EntityPlayer player, ItemStack item, IInventory craftMatrix) {
+	private void handleRecipePaperTape(EntityPlayer player, ItemStack item, IInventory craftMatrix) {
     	String paperTapeRecipe = " x xyx x ";
     	boolean isPaperTape = true;
     	for(int i = 0; i < 9; i++) {
@@ -29,7 +28,12 @@ public class CraftingHandler implements ICraftingHandler {
     		ItemPaperTape tapeHandler = (ItemPaperTape)item.getItem();
     		item = tapeHandler.extend(item, craftMatrix.getStackInSlot(4), !player.worldObj.isRemote);
     		return;
-    	}
+    	}		
+	}
+	
+	@Override
+	public void onCrafting(EntityPlayer player, ItemStack item, IInventory craftMatrix) {
+		handleRecipePaperTape(player, item, craftMatrix);
 	}
 
 	@Override
