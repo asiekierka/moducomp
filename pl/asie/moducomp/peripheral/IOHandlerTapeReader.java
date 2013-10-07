@@ -94,17 +94,18 @@ public class IOHandlerTapeReader extends PeripheralBasic implements IMemory, Run
 		IItemTape handler = tapeReader.getHandler();
 		if(handler == null) return;
 		
+		synchronized(this) {
+			setReadByte();
+		}
 		int bytes = handler.seek(tape, seekBytes);
 		long time = bytes * SPEED;
 		try { Thread.sleep(time); }
 		catch(Exception e) { e.printStackTrace(); }
-
-		int interruptLane = intregs[0x05]&31;
 		synchronized(this) {
-			setReadByte();
 			writeShort(0x06, (short)bytes);
 			intregs[0x09] = 0;
 		}
+		int interruptLane = intregs[0x05]&31;
 		if(interruptLane >= 0 && interruptLane < 28)
 			seekCPU.interrupt(interruptLane);
 	}
