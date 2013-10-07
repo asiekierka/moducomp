@@ -42,17 +42,25 @@ public class ItemPaperTape extends Item implements IItemTape {
 		return true;
 	}
 	
-	public int seek(ItemStack stack, int bytes) {
+	public int getSeekLength(ItemStack stack, int bytes) {
 		if(check(stack)) {
 			NBTTagCompound compound = stack.getTagCompound();
 			int currentPosition = compound.getInteger("TapePosition");
 			int targetPosition = currentPosition + bytes;
 			if(targetPosition < 0) targetPosition = 0;
 			else if(targetPosition >= getLength(stack)) targetPosition = getLength(stack) - 1;
+			return targetPosition - currentPosition;
+		} else return 0;
+	}
+	
+	public void seek(ItemStack stack, int bytes) {
+		if(check(stack)) {
+			NBTTagCompound compound = stack.getTagCompound();
+			int currentPosition = compound.getInteger("TapePosition");
+			int targetPosition = currentPosition + getSeekLength(stack, bytes);
 			compound.setInteger("TapePosition", targetPosition);
 			stack.setTagCompound(compound);
-			return Math.abs(currentPosition - targetPosition);
-		} else return 0;
+		}
 	}
 	
 	public int getPosition(ItemStack stack) {
@@ -123,14 +131,11 @@ public class ItemPaperTape extends Item implements IItemTape {
 		return compound;
 	}
 	
+	// Deprecated.
 	public void reset(ItemStack stack) {
 		if(check(stack)) {
 			stack.setTagCompound(reset(stack.getTagCompound()));
 		}
-	}
-	
-	public float getSpeed() {
-		return 0.5F;
 	}
 	
     @Override

@@ -24,7 +24,6 @@ public class IOHandlerTapeReader extends PeripheralBasic implements IMemory, Run
 		this.tapeReader = tileEntity;
 		this.intregs[0x05] = 1; // Default
 		this.flags = new boolean[8];
-		setReadByte();
 	}
 	
 	private boolean[] flags;
@@ -48,6 +47,9 @@ public class IOHandlerTapeReader extends PeripheralBasic implements IMemory, Run
 				for(int i = 0; i < 8; i++)
 					value |= (flags[i]?1:0)<<i;
 				intregs[addr] = (byte)value;
+				break;
+			case 0x08: // CURRENT BYTE
+				setReadByte();
 				break;
 		}
 	}
@@ -94,15 +96,19 @@ public class IOHandlerTapeReader extends PeripheralBasic implements IMemory, Run
 		IItemTape handler = tapeReader.getHandler();
 		if(handler == null) return;
 		
-		int bytes = handler.seek(tape, seekBytes);
+		int bytes = Math.abs(handler.getSeekLength(tape, seekBytes));
 		long time = bytes * SPEED;
 		try { Thread.sleep(time); }
 		catch(Exception e) { e.printStackTrace(); }
 
 		int interruptLane = intregs[0x05]&31;
 		synchronized(this) {
-			setReadByte();
-			writeShort(0x06, (short)bytes);
+			tape = tapeReader.getTape();
+			if(tape != null) {
+				handler.seek(tape, seekBytes);
+				setReadByte();
+				writeShort(0x06, (short)bytes);
+			} else writeShort(0x06, (short)0);
 			intregs[0x09] = 0;
 		}
 		if(interruptLane >= 0 && interruptLane < 28)

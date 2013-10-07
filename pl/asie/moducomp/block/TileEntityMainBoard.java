@@ -30,8 +30,7 @@ import net.minecraft.network.packet.Packet250CustomPayload;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
-public class TileEntityMainBoard extends TileEntityInventory implements Runnable
-{
+public class TileEntityMainBoard extends TileEntityInventory {
 	public TileEntityMainBoard() {
 		super(1, 1, "block.moducomp.main_board");
 	}
@@ -56,23 +55,21 @@ public class TileEntityMainBoard extends TileEntityInventory implements Runnable
 		}
 		return list;
 	}
-	private boolean isRunning = false;
+	
 	private ICPU cpu;
 	private IMemoryController memory;
 	
-	public void run() { // Thread
-		while(isRunning) {
-			long t_start = System.nanoTime() / 1000000;
-			int cyclesLeft = cpu.run(250000 / 200); // 250KHz TODO changeable
-			long t_end = System.nanoTime() / 1000000;
-			try {
-				Thread.sleep(5 - (t_end - t_start));
-			} catch(Exception e) { }
-		}
+	public boolean isCPUInserted() {
+		ItemStack cpuStack = this.getStackInSlot(0);
+		return cpuStack != null && (cpuStack.getItem() instanceof IItemCPU);
 	}
 	
+	private CPUThreadMainBoard currentThread;
+	
 	public void begin() {
-		isRunning = false;
+		if(!isCPUInserted()) return;
+		// Turn off previous CPU
+		end();
 		// Get memory
 		this.memory = getMemoryController();
 		if(this.memory == null) return;
@@ -85,7 +82,6 @@ public class TileEntityMainBoard extends TileEntityInventory implements Runnable
 		this.memory.setSlot(15, rom);
 		// Get CPU
 		ItemStack cpuStack = this.getStackInSlot(0);
-		if(cpuStack == null || !(cpuStack.getItem() instanceof IItemCPU)) return;
 		IItemCPU itemCPU = (IItemCPU)cpuStack.getItem();
 		cpu = itemCPU.createNewCPUHandler(cpuStack);
 		if(cpu == null) return;
@@ -101,12 +97,15 @@ public class TileEntityMainBoard extends TileEntityInventory implements Runnable
 		// Reset
 		cpu.setMemoryHandler(memory);
 		cpu.resetCold();
-		isRunning = true;
 		ModularComputing.instance.debug("Starting emulation!");
-		new Thread(this).start();
+		currentThread = new CPUThreadMainBoard(cpu, 250000); // TODO change clock speed
+		new Thread(currentThread).start();
 	}
 	
 	public void end() {
-		isRunning = false;
+		if(currentThread != null) {
+			currentThread.kill();
+			currentThread = null;
+		}
 	}
 }

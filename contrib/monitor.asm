@@ -205,6 +205,11 @@ detect_tape_found:
 	move.w @12, #46
 	move.w @11, @0
 tape_read:
+	; Read byte
+	ld.b @13, $FD008, @10
+	st.b $00000, @5, @13 ; Write to memory
+	add.w @5, #1
+	add.w @11, #1
 	; Set seek
 	move.w @13, #1
 	st.w $FD006, @10, @13
@@ -222,10 +227,6 @@ tape_read_read:
 	ld.w @13, $FD006, @10 ; Check seek amount
 	cmp.w @13, #1
 	jnz tape_read_end ; Not equal to 1 seek?
-	ld.b @13, $FD008, @10
-	st.b $00000, @5, @13 ; Write to memory
-	add.w @5, #1
-	add.w @11, #1
 tape_read_finish:
 	cmp.w @6, @11
 	jnz tape_read ; Read all? If not, jump

@@ -30,7 +30,9 @@ public class AdapterTapeReader implements IPeripheralAdapter {
 		ItemStack tape = tapeReader.getStackInSlot(0);
 		if(tape != null && tape.getItem() instanceof ItemPaperTape) {
 			ItemPaperTape tapeHandler = (ItemPaperTape)tape.getItem();
-			return tapeHandler.seek(tape, bytes);
+			int length = tapeHandler.getSeekLength(tape, bytes);
+			tapeHandler.seek(tape, length);
+			return Math.abs(length);
 		} else return -1;
 	}
 	

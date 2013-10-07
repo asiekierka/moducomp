@@ -24,8 +24,10 @@ public class TileEntityMusicBox extends TileEntityInventory {
 		ItemStack stack = this.getStackInSlot(0);
 		if(stack != null && stack.getItem() instanceof ItemPaperTape) {
 	    	ItemPaperTape tapeHandler = (ItemPaperTape)stack.getItem();
-	    	int seek = tapeHandler.seek(stack, 2);
-	    	if(seek < 2) return false; // End of tape
+	    	int seek = tapeHandler.getSeekLength(stack, 2);
+	    	if(seek < 2) { return false; } // End of tape
+	    	else { tapeHandler.seek(stack, 2); }
+	    	
 	    	int values = ((0xFF & tapeHandler.getByte(stack, -2)) << 8) | (0xFF & tapeHandler.getByte(stack, -1));
 	    	for(int i = 0; i < 16; i++) {
 	    		if((values & (1<<(15-i))) == 0) continue;
