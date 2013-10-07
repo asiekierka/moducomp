@@ -8,6 +8,7 @@ import net.minecraft.block.material.Material;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.world.Explosion;
 import net.minecraft.world.World;
 
 public abstract class BlockMachine extends BlockContainer implements ITileEntityOwner {
@@ -21,7 +22,6 @@ public abstract class BlockMachine extends BlockContainer implements ITileEntity
     		this.setCreativeTab(ModularComputing.instance.tab);
     		this.setBlockBounds(0.0F, 0.0F, 0.0F, 1.0F, 1.0F, 1.0F);
     		this.guiID = BlockMachine.getUniqueGuiID();
-    		ModularComputing.instance.logger.info("Gui ID for "+name+" is "+this.guiID);
     }
     
     public static int nextGuiID = 0;
@@ -33,6 +33,23 @@ public abstract class BlockMachine extends BlockContainer implements ITileEntity
     
     public boolean isOpaqueCube() { return false; }
     public boolean renderAsNormalBlock() { return false; }
+    
+    public void onBlockDestroyed(World world, int x, int y, int z, int meta) {
+    	TileEntity tileEntity = world.getBlockTileEntity(x, y, z);
+    	if(tileEntity != null) tileEntity.invalidate();
+    }
+    
+    @Override
+    public void onBlockDestroyedByPlayer(World world, int x, int y, int z, int meta) {
+    	super.onBlockDestroyedByPlayer(world, x, y, z, meta);
+    	this.onBlockDestroyed(world, x, y, z, meta);
+    }
+    
+    @Override
+    public void onBlockDestroyedByExplosion(World world, int x, int y, int z, Explosion explosion) {
+    	super.onBlockDestroyedByExplosion(world, x, y, z, explosion);
+    	this.onBlockDestroyed(world, x, y, z, 0);
+    }
     
     @Override
 	public boolean onBlockActivated(World world, int x, int y, int z, EntityPlayer player, int par6, float par7, float par8, float par9) {

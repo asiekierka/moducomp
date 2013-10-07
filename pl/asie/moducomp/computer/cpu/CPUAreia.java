@@ -100,6 +100,10 @@ public class CPUAreia implements ICPU
 		this.halted = false;
 	}
 	
+	public IMemory getMemoryHandler() {
+		return this.memctl;
+	}
+	
 	public void setMemoryHandler(IMemory ctl) {
 		this.memctl = ctl;
 	}

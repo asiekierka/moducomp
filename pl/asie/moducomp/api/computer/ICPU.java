@@ -1,6 +1,7 @@
 package pl.asie.moducomp.api.computer;
 
 public interface ICPU {
+	public IMemory getMemoryHandler();
 	public void setMemoryHandler(IMemory handler);
 
 	public void resetWarm();
