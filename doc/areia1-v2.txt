@@ -1,0 +1,58 @@
+AREIA-1
+------------
+
+16 registers, 16 bits each,
+0 = always 0
+15 = SP (stack pointer)
+
+Memory is treated as little-endian.
+Opcode byte: oooooott (o - opcode, t - type of opcode)
+l is .b or .w
+
+Opcode formats:
+OP0.1 0000oooo - OP0
+OP1.1 010loooo xxxxyyyy ( op(@x,@y) -> @x ) - OP1.l @x, @y
+OP1.2 011loooo xxxxyyyy iiiiiiii [iiiiiiii] ( op(@y,#i) -> @x ) - OP1.l @x, [@y, ]#i
+OP2.1 1000olss xxxxyyyy (ld @x, $S0000 + (unsigned int16)@y - segment picked by ss) - LD.l:s @x, @y / ST.l:s @y, @x
+OP2.2 1001olss xxxxbbbb aaaaaaaa aaaaaaaa (ld @x, $baaaa + $S0000) (if ss is set to 3, force to $00) - LD.l:s[^] @x, $baaaa / ST.l:s[^] $baaaa, @x (if you want to address from the very start of memory, use ":=", NOT ":3". :3 will hint the assembler to NOT use this opcode, and if you have a ^ hint then that will throw an ERROR.)
+OP2.3 1010olss xxxxyyyy aaaaaaaa (ld @x, $S0000 + (signed int8 converted to unsigned int16)($aa + @y)) - LD.l:s[<] @x, @y[, $aa] / ST.l:s[<] @y[, $aa], @x
+OP2.4 1011olss xxxxyyyy aaaaaaaa aaaaaaaa (ld @x, $S0000 + (unsigned int16)($aaaa + @y)) - LD.l:s[>] @x, @y[, $aaaa] / ST.l:s[>] @y[, $aaaa], @x (if you don't define the ><^ char, this is the default assumption when you give the assembler a label it hasn't encountered yet.)
+OP3.1 1100oooo xxxxbbbb aaaaaaaa aaaaaaaa (jmp $baaaa + @x) - OP3= $baaaa[, @x]
+OP3.2 1101oooo aaaaaaaa aaaaaaaa (jmp $Saaaa (S taken from upper 4 bits of PC)) - OP3* $aaaa
+OP3.3 111loooo aaaaaaaa [aaaaaaaa] (jmp PC_AT_END_OF_OPCODE + (signed)$aa[aa] - CAN CROSS SEGMENT BOUNDARIES.) - OP3[>] $aaaa (the default) / OP3[<] $aa (sometimes used)
+(12 more modes left for ld/st) <-- wait, what? --GM
+
+(The ordering of the 4 type-defining bits is going to stay. Makes it saner to hexedit. --asie)
+
+Opcodes: (OP0 - 64 opcodes total (00??oooo), OP1 - 16 opcodes total, OP2 - full!, OP3 - 16 opcodes total)
+OP0 nop, ret, popf, pushf, cli, sei, hlt, (unused), ss0, ss1, ss2, ss3, dbg (prints out debug information in console)
+OP1 move, add, cmp, sub, xor, or, and, (unused), ror*, rol*, rcr*, rcl*, asr*, asl*, lsr*, (unused) <-- ops marked with a * always have an 8-bit immediate byte... and only the low 4 bits are used.
+OP2 ld, st
+OP3 jz, jnz, jc, jnc, jv, jnv, js, jns, jmp, jsr, (unused), (unused), (unused), (unused), (unused), (unused)
+
+Notes:
+move with @0 as destination is:
+for l=0, move.b SEGMENT, @y
+for l=1, move.b @y, SEGMENT
+
+SS0/SS1/SS2/SS3 is "set segment 0/1/2/3", which selects the segment used for memory access.
+By convention:
+SS0 is for general access.
+SS1 is for streaming reads.
+SS2 is for streaming writes.
+SS3 is for stack accesses and is explicitly the one used by PUSHF/POPF/RET.
+
+PC is a full 20 bits, and doesn't use the segment registers.
+
+FLAGS:
+bit description
+---------------------------------------
+0 ZERO (CMP equality)
+1 CARRY (whether carrying a bit, for subtract follow Z80 impl.)
+2 OVERFLOW (add/sub/cmp: if signed overflow occurs; xor/and/or: sum of all bits over GF(2) (parity))
+3 SIGNED (whether >= 0x8000 or >= 0x80 for b)
+4 INTERRUPT (set to 1 to enable)
+5 SEGB0 (1 uses segments 1/3, 0 uses segments 0/2)
+6 SEGB1 (1 uses segments 2/3, 0 uses segments 0/1)
+7-15 Reserved.
+
