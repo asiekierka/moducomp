@@ -570,7 +570,7 @@ parse_op2(Code, [$., VS, $:, VSeg|L1], State) when ?IS_W_B(VS) ->
 		{_, _, _, _, _, near} when is_integer(Imm) -> near;
 		{_, 0, _, _, X, nil} when X /= false, is_integer(Imm) -> far;
 		{_, _, _, _, X, nil} when X /= true, is_integer(Imm), ((Imm band 16#FFFF) >= 16#FF80 orelse (Imm band 16#FFFF) < 16#80) -> short;
-		{_, _, _, _, X, nil} when X /= true, is_integer(Imm) -> near
+		{_, _, _, _, X, nil} when X /= true -> near
 	end,
 
 	parse_end(skip_ws(L2)),
