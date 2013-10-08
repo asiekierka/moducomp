@@ -20,7 +20,6 @@ OP2.4 1011olss xxxxyyyy aaaaaaaa aaaaaaaa (ld @x, $S0000 + (unsigned int16)($aaa
 OP3.1 1100oooo xxxxbbbb aaaaaaaa aaaaaaaa (jmp $baaaa + @x) - OP3= $baaaa[, @x]
 OP3.2 1101oooo aaaaaaaa aaaaaaaa (jmp $Saaaa (S taken from upper 4 bits of PC)) - OP3* $aaaa
 OP3.3 111loooo aaaaaaaa [aaaaaaaa] (jmp PC_AT_END_OF_OPCODE + (signed)$aa[aa] - CAN CROSS SEGMENT BOUNDARIES.) - OP3[>] $aaaa (the default) / OP3[<] $aa (sometimes used)
-(12 more modes left for ld/st) <-- wait, what? --GM
 
 (The ordering of the 4 type-defining bits is going to stay. Makes it saner to hexedit. --asie)
 
@@ -31,9 +30,9 @@ OP2 ld, st
 OP3 jz, jnz, jc, jnc, jv, jnv, js, jns, jmp, jsr, (unused), (unused), (unused), (unused), (unused), (unused)
 
 Notes:
-move with @0 as destination is:
-for l=0, move.b SEGMENT, @y
-for l=1, move.b @y, SEGMENT
+move with @0 as _destination (move.l @0, @x) is:
+for l=0, move.b SEGMENT, @x
+for l=1, move.b @x, SEGMENT
 
 SS0/SS1/SS2/SS3 is "set segment 0/1/2/3", which selects the segment used for memory access.
 By convention:
