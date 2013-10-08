@@ -8,14 +8,10 @@ code_start:
 	; Set segments
 	move.b @1, #$F0
 	move.b @2, #$00
-	ss0
-	move.b @0, @2
-	ss1
-	move.b @0, @2
-	ss2
-	move.b @0, @2
-	ss3
-	move.b @0, @1
+	sseg.0 @2
+	sseg.1 @2
+	sseg.2 @2
+	sseg.3 @1
 
 	; Check for amount of RAM installed (in slot 0 for now)
 detectRAM:
@@ -510,10 +506,7 @@ load_table:
 	jmp< load_table_ret
 
 load_table_ret:
-	pushf
-	ss1
-	move.b @0, @1
-	popf
+	sseg.1 @1
 	ld.b:1 @1, $0000, @5
 	ret
 

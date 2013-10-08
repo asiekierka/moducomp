@@ -32,12 +32,10 @@ op0("pushf") -> 3;
 op0("cli")   -> 4;
 op0("sei")   -> 5;
 op0("hlt")   -> 6;
-% unused op 7
-op0("ss0")   -> 8;
-op0("ss1")   -> 9;
-op0("ss2")   -> 10;
-op0("ss3")   -> 11;
 % dbg not supported until it has proper semantics
+% unused ops 8-15
+op0("gseg")  -> 16;
+op0("sseg")  -> 17;
 op0(_) -> nil.
 
 op1("move") -> 0;
@@ -392,12 +390,21 @@ parse_direc("align", L, State) ->
 % Op parsing functions
 %
 
-parse_op0(Code, L, State) ->
-	% OP0
+parse_op0(Code, L, State) when Code < 16 ->
+	% OP0.1
 	State2 = mem_write(State, [
 		2#00000000 + Code]),
 	L1 = skip_ws(L),
 	parse_end(L1),
+	State2;
+parse_op0(Code, [$., X | L], State) when Code >= 16, Code < 32, X >= $0, X =< $3 ->
+	% OP0.1
+	Seg = X - $0,
+	{ok, Reg, L1} = tok_reg(skip_ws(L)),
+	State2 = mem_write(State, [
+		2#00000000 + Code,
+		Reg*16 + Seg]),
+	parse_end(skip_ws(L1)),
 	State2.
 
 parse_op1(Code, [$., S|L1], State) when ?IS_W_B(S) ->
@@ -410,8 +417,7 @@ parse_op1(Code, [$., S|L1], State) when ?IS_W_B(S) ->
 
 	% @x
 	{ok, RegN1, L2} = tok_reg(skip_ws(L1)),
-	% TODO: cleaner seg get/set
-	% true = (RegN1 /= 0 orelse Code /= op1("move")),
+	true = (RegN1 /= 0 orelse Code /= op1("move")),
 
 	% ,
 	[$, | L3] = skip_ws(L2),

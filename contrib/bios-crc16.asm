@@ -14,14 +14,10 @@ code_start:
 	; Set segments
 	move.b @1, #$F0
 	move.b @2, #$00
-	ss0
-	move.b @0, @1
-	ss1
-	move.b @0, @2
-	ss2
-	move.b @0, @2
-	ss3
-	move.b @0, @1
+	sseg.0 @1
+	sseg.1 @2
+	sseg.2 @2
+	sseg.3 @1
 
 	; Check if we have RAM in the "low" 256 bytes
 	xor.w @2, @2

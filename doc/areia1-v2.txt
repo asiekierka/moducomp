@@ -11,6 +11,7 @@ l is .b or .w
 
 Opcode formats:
 OP0.1 0000oooo - OP0
+OP0.2 0001oooo xxxx00ss - OP0.s @x (where s is a segment selector)
 OP1.1 010loooo xxxxyyyy ( op(@x,@y) -> @x ) - OP1.l @x, @y
 OP1.2 011loooo xxxxyyyy iiiiiiii [iiiiiiii] ( op(@y,#i) -> @x ) - OP1.l @x, [@y, ]#i
 OP2.1 1000olss xxxxyyyy (ld @x, $S0000 + (unsigned int16)@y - segment picked by ss) - LD.l:s @x, @y / ST.l:s @y, @x
@@ -24,7 +25,8 @@ OP3.3 111loooo aaaaaaaa [aaaaaaaa] (jmp PC_AT_END_OF_OPCODE + (signed)$aa[aa] - 
 (The ordering of the 4 type-defining bits is going to stay. Makes it saner to hexedit. --asie)
 
 Opcodes: (OP0 - 64 opcodes total (00??oooo), OP1 - 16 opcodes total, OP2 - full!, OP3 - 16 opcodes total)
-OP0 nop, ret, popf, pushf, cli, sei, hlt, (unused), ss0, ss1, ss2, ss3, dbg (prints out debug information in console)
+OP0.1 nop, ret, popf, pushf, cli, sei, hlt, dbg (prints out debug information in console - NEED MORE INFORMATION BEFORE I EVEN BOTHER IMPLEMENTING THIS), (unused), (unused), (unused), (unused), (unused), (unused), (unused), (unused)
+OP0.2 gseg, sseg, (unused), (unused), (unused), (unused), (unused), (unused), (unused), (unused), (unused), (unused), (unused), (unused), (unused), (unused)
 OP1 move, add, cmp, sub, xor, or, and, (unused), ror*, rol*, rcr*, rcl*, asr*, asl*, lsr*, (unused) <-- ops marked with a * always have an 8-bit immediate byte... and only the low 4 bits are used.
 OP2 ld, st
 OP3 jz, jnz, jc, jnc, jv, jnv, js, jns, jmp, jsr, (unused), (unused), (unused), (unused), (unused), (unused)
@@ -51,7 +53,5 @@ bit description
 2 OVERFLOW (add/sub/cmp: if signed overflow occurs; xor/and/or: sum of all bits over GF(2) (parity))
 3 SIGNED (whether >= 0x8000 or >= 0x80 for b)
 4 INTERRUPT (set to 1 to enable)
-5 SEGB0 (1 uses segments 1/3, 0 uses segments 0/2)
-6 SEGB1 (1 uses segments 2/3, 0 uses segments 0/1)
-7-15 Reserved.
+5-15 Reserved.
 
