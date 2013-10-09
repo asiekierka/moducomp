@@ -1,24 +1,36 @@
 ; Code by GreaseMonkey
 
 	.org $FE000
+	.segment 0 $F0
+	.segment 1 $00
+	.segment 2 $00
+	.segment 3 $F0
 crc_base:
 	.dw $8602
 code_start:
 	; Clear interrupts
 	cli
 
+	; Set segments
+	move.b @1, #$F0
+	move.b @2, #$00
+	sseg.0 @1
+	sseg.1 @2
+	sseg.2 @2
+	sseg.3 @1
+
 	; Check if we have RAM in the "low" 256 bytes
 	xor.w @2, @2
 	lp_ckram1:
 		; Write RAM to $00000
-		st.b $00000, @2, @2
+		st.b:2 @2, @2
 		add.b @2, #1
 		cmp.b @2, #$80
 		jnz lp_ckram1
 		move.b @2, #$00
 	lp_ckram2:
 		; Read RAM from $F0000 and compare (1. we need this alias, and 2. we don't want any "cache" to screw us over should we ever add one)
-		ld.b @1, $F0000, @2
+		ld.b:3 @1, @2
 		cmp.b @1, @2
 		jnz lpf_ckram
 		add.b @2, #1
@@ -38,9 +50,9 @@ code_start:
 
 	; Set up our interrupt vector.
 	move.w @1, #int_vec
-	st.w $FFF80, @1
+	st.w:= $FFF80, @1
 	move.b @1, #$0F
-	st.b $FFF82, @1
+	st.b:= $FFF82, @1
 
 	; Jump to our interesting code.
 	jmp start
@@ -48,15 +60,15 @@ code_start:
 int_vec:
 	; Stash some registers on the stack.
 	sub.w @15, #2
-	st.w $00000, @1
+	st.w:3 @15, $00, @1
 
 	; Clear all interrupts because we are lazy.
 	move.w @1, #$FFFF
-	st.w $FFF84, @1
-	st.w $FFF86, @1
+	st.w:= $FFF84, @1
+	st.w:= $FFF86, @1
 
 	; Restore registers.
-	ld.w @1, $00000
+	ld.w:3 @1, @15, $00
 	add.w @15, #2
 
 	; Return.
@@ -78,7 +90,7 @@ start:
 	crc_lp1:
 		; Read a byte and loop through its bits.
 		move.b @3, #8
-		ld.b @4, $F0000, @2
+		ld.b:3 @4, @2
 		crc_lp2:
 			; Shift and compare our CRC16.
 			lsr.w @1, #1
@@ -102,7 +114,7 @@ start:
 		jnz crc_lp1
 	
 	; check CRC
-	ld.w @2, crc_base
+	ld.w:3 @2, crc_base
 	move.w @13, @1
 	move.w @14, @2
 	xor.w @1, @2
@@ -128,11 +140,11 @@ idle:
 putsF:
 	move.w @2, @1
 putsF_lp1:
-	ld.b @1, $F0000, @2
+	ld.b:3 @1, @2
 	and.b @1, @1
 	jz putsF_ret
 		add.w @2, #1
-		st.b $FDFFE, @1
+		st.b:= $FDFFE, @1
 		jmp putsF_lp1
 putsF_ret:
 	ret

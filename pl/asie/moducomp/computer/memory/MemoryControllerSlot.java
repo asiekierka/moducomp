@@ -45,8 +45,9 @@ public class MemoryControllerSlot implements IMemoryController
 
 		if(addr < 0xFC000) {
 			IMemory slot = this.memorySlots[(addr >> 16) & 0xF];
+			if(slot == null) return (byte)0xFF;
 			synchronized(slot) {
-				return (slot == null ? (byte)0xFF : slot.read8(cpu, addr & 0xFFFF));
+				return slot.read8(cpu, addr & 0xFFFF);
 			}
 		} else if(addr <= 0xFCFFF) { // Reserved
 			return (byte)0xFF;

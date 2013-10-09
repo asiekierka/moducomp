@@ -5,14 +5,22 @@ code_start:
 	; Clear interrupts
 	cli
 
+	; Set segments
+	move.b @1, #$F0
+	move.b @2, #$00
+	sseg.0 @2
+	sseg.1 @2
+	sseg.2 @2
+	sseg.3 @1
+
 	; Check for amount of RAM installed (in slot 0 for now)
 detectRAM:
 	; Begin
 	move.w @9, #$007F
 	move.b @13, #$42
 detectRAMLoop:
-	st.b $00000, @9, @13
-	ld.b @14, $00000, @9
+	st.b:0 @9, @13
+	ld.b:0 @14, @9
 	cmp.b @13, @14
 	jnz detectRAMEnd
 	add.w @9, #$0080
@@ -29,7 +37,7 @@ detectTerminal:
 	; Start looking
 	move.w @8, @0
 detectionLoop:
-	ld.b @14, $FD003, @8
+	ld.b:3 @14, $D003, @8
 	cmp.w @14, #$0001
 	jz detectionEnd
 	add.w @8, #$0100
@@ -46,25 +54,25 @@ detectionEnd:
 
 	; Set up our interrupt vector.
 	move.w @1, #int_vec
-	st.w $FFF80, @1
+	st.w:3 $FF80, @1
 	move.b @1, #$0F
-	st.b $FFF82, @1
+	st.b:3 $FF82, @1
 
 	; Set color
 	move.w @1, #$000F
-	st.b $FD012, @8, @1
-	st.w $FD00A, @8, @1
+	st.b:3 $D012, @8, @1
+	st.w:3 $D00A, @8, @1
 	move.w @1, #$7F04
-	st.w $FD010, @8, @1
+	st.w:3 $D010, @8, @1
 
 	jsr printMemory
 prompt:
-	st.b $FD00E, @8, @0
+	st.b:3 $D00E, @8, @0
 	move.w @7, #$0002 ; Char begin here
 
 	; Allow echoing
 	move.w @1, #$07
-	st.w $FD004, @8, @1
+	st.w:3 $D004, @8, @1
 
 	move.w @1, #prompt_string
 	jsr putsF
@@ -84,8 +92,8 @@ printHexLoop:
 	move.w @13, @14
 	and.w @13, #$F000
 	lsr.w @13, #12
-	ld.b @12, hexChars, @13
-	st.b $FD008, @8, @12
+	ld.b:3 @12, hexChars, @13
+	st.b:3 $D008, @8, @12
 	lsl.w @14, #4
 	sub.b @2, #1
 	jmp printHexLoop
@@ -94,7 +102,7 @@ printHexEnd:
 
 skipSpaces:
 	add.w @14, #1
-	ld.b @13, $00000, @14
+	ld.b:0 @13, @14
 	cmp.b @13, #32
 	jz skipSpaces
 	ret
@@ -129,7 +137,7 @@ getHexLoop:
 	cmp.w @14, @7
 	jz getHexEnd ; over
 	move.w @13, @0
-	ld.b @13, $00000, @14
+	ld.b:0 @13, @14
 	add.w @14, #1
 	jsr isHex
 	cmp.b @13, #255
@@ -163,7 +171,7 @@ char_goto:
 	move.b @11, #4
 	jsr getHex
 	move.w @15, #$0080
-	jsr $00000, @12
+	jsr= $00000, @12
 	jmp parse_end
 
 char_write:
@@ -175,7 +183,7 @@ char_write:
 char_write_loop:
 	move.b @11, #2
 	jsr getHex
-	st.b $00000, @5, @12
+	st.b:0 @5, @12
 	add.w @5, #1
 	add.w @14, #1
 	cmp.w @14, @7
@@ -187,7 +195,7 @@ detect_tape:
 	; Start looking
 	move.w @10, @0
 detect_tape_loop:
-	ld.b @12, $FD003, @10
+	ld.b:3 @12, $D003, @10
 	cmp.b @12, #2
 	jz detect_tape_found
 	add.w @10, #$0100
@@ -206,25 +214,25 @@ detect_tape_found:
 	move.w @11, @0
 tape_read:
 	; Read byte
-	ld.b @13, $FD008, @10
-	st.b $00000, @5, @13 ; Write to memory
+	ld.b:3 @13, $D008, @10
+	st.b:0 @5, @13 ; Write to memory
 	add.w @5, #1
 	add.w @11, #1
 	; Set seek
 	move.w @13, #1
-	st.w $FD006, @10, @13
+	st.w:3 $D006, @10, @13
 tape_read_draw_dot: ; While reading :3
 	move.w @13, @11
 	and.w @13, #$000F
 	jnz tape_read_loop1 ; No dot
-	st.b $FD008, @8, @12
+	st.b:3 $D008, @8, @12
 tape_read_loop1:
 	nop
-	ld.b @13, $FD009, @10
+	ld.b:3 @13, $D009, @10
 	cmp.b @13, #1
 	jz tape_read_loop1 ; Loaded?
 tape_read_read:
-	ld.w @13, $FD006, @10 ; Check seek amount
+	ld.w:3 @13, $D006, @10 ; Check seek amount
 	cmp.w @13, #1
 	jnz tape_read_end ; Not equal to 1 seek?
 tape_read_finish:
@@ -240,7 +248,7 @@ char_color:
 	jsr skipSpaces
 	move.b @11, #4
 	jsr getHex
-	st.w $FD010, @8, @12
+	st.w:3 $D010, @8, @12
 	jmp parse_end
 
 ; @4 - current pos
@@ -280,7 +288,7 @@ char_print:
 	jnz char_print_noSegment ; Did not read all 4
 	; Check for segment
 	add.w @14, #1
-	ld.b @13, $00000, @14
+	ld.b:0 @13, @14
 	jsr isHex
 	cmp.b @13, #255
 	jz char_print_noSegment
@@ -319,12 +327,11 @@ char_print_loop:
 	cmp.w @6, #0
 	jz parse_end
 	move.w @1, #32
-	st.b $FD008, @8, @1
+	st.b:3 $D008, @8, @1
 	move.w @12, @3
-	asl.w @12, #2 ; multiply by 5
-	add.w @12, @3
-	add.w @12, #load_table
-	jsr $F0000, @12
+	asl.w @12, #4
+	sseg.1 @12
+	ld.b:1 @1, @5
 	lsl.w @1, #8
 	move.w @2, #2
 	jsr printHex
@@ -335,12 +342,12 @@ char_print_loop:
 	jnz char_print_loop
 	cmp.w @6, #0
 	jz parse_end
-	st.b $FD00E, @8, @0
+	st.b:3 $D00E, @8, @0
 	jmp char_print_fin
 
 char_info:
 	jsr printMemory
-	st.b $FD00E, @8, @0
+	st.b:3 $D00E, @8, @0
 	move.w @1, #sp_string
 	jsr putsF
 	move.w @2, #4
@@ -350,10 +357,10 @@ char_info:
 
 char_enter: ; Parse!
 	move.w @1, #$06
-	st.w $FD004, @8, @1
+	st.w:3 $D004, @8, @1
 	move.w @15, #$0080
 	move.w @14, #2 ; Pointer
-	ld.b @1, $00002
+	ld.b:0 @1, $0002
 	cmp.b @1, #97
 	jc char_parse
 	sub.b @1, #32
@@ -374,7 +381,7 @@ char_parse:
 parse_end:
 	move.w @14, @0
 parse_end_loop:
-	st.b $00000, @14, @0
+	st.b:0 @14, @0
 	add.w @14, #1
 	cmp.w @14, @7
 	jc parse_end_loop
@@ -385,7 +392,7 @@ char_backspace: ; Remove char
 	ret
 
 int_vec_char:
-	ld.w @1, $FD00C, @8
+	ld.w:3 @1, $D00C, @8
 	cmp.w @1, #0
 	jz int_vec_end
 	jsr int_vec_char_read
@@ -410,7 +417,7 @@ char_range2:
 	jc char_add
 	ret
 char_add: ; Whee
-	st.b $00000, @7, @1
+	st.b:0 @7, @1
 	add.w @7, #1
 	ret
 
@@ -418,14 +425,14 @@ int_vec:
 	cli
 	; Stash some registers on the stack.
 	sub.w @15, #2
-	st.w $00000, @1
+	st.w:3 @15, @1
 	sub.w @15, #2
-	st.w $00000, @12
+	st.w:3 @15, @12
 	sub.w @15, #2
-	st.w $00000, @13
+	st.w:3 @15, @13
 
 	; Check for interrupt number 0
-	ld.b @1, $FFF84
+	ld.b:= @1, $FFF84
 	and.b @1, #$01
 	cmp.b @1, #$01
 	jz int_vec_char
@@ -433,15 +440,15 @@ int_vec:
 int_vec_end:
 	; Clear all interrupts because we are lazy.
 	move.w @1, #$FFFF
-	st.w $FFF84, @1
-	st.w $FFF86, @1
+	st.w:3 $FF84, @1
+	st.w:3 $FF86, @1
 
 	; Restore registers.
-	ld.w @13, $00000
+	ld.w:3 @13, @15
 	add.w @15, #2
-	ld.w @12, $00000
+	ld.w:3 @12, @15
 	add.w @15, #2
-	ld.w @1, $00000
+	ld.w:3 @1, @15
 	add.w @15, #2
 
 	; Return.
@@ -454,47 +461,13 @@ int_vec_end:
 putsF:
 	move.w @13, @1
 putsF_lp1:
-	ld.b @1, $F0000, @13
+	ld.b:3 @1, $0000, @13
 	and.b @1, @1
 	jz putsF_ret
 		add.w @13, #1
-		st.b $FD008, @8, @1
+		st.b:3 $D008, @8, @1
 		jmp putsF_lp1
 putsF_ret:
-	ret
-
-load_table:
-	ld.b @1, $00000, @5
-	ret
-	ld.b @1, $10000, @5
-	ret
-	ld.b @1, $20000, @5
-	ret
-	ld.b @1, $30000, @5
-	ret
-	ld.b @1, $40000, @5
-	ret
-	ld.b @1, $50000, @5
-	ret
-	ld.b @1, $60000, @5
-	ret
-	ld.b @1, $70000, @5
-	ret
-	ld.b @1, $80000, @5
-	ret
-	ld.b @1, $90000, @5
-	ret
-	ld.b @1, $A0000, @5
-	ret
-	ld.b @1, $B0000, @5
-	ret
-	ld.b @1, $C0000, @5
-	ret
-	ld.b @1, $D0000, @5
-	ret
-	ld.b @1, $E0000, @5
-	ret
-	ld.b @1, $F0000, @5
 	ret
 
 no_ram_string:

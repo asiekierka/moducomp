@@ -9,6 +9,7 @@
 -export([main/0, main/1]).
 -export([parse_asm_string/1, parse_asm_file/1]).
 -export([mem_dump/1]).
+-export([tok_str/1]).
 -include("asm.hrl").
 
 -define(IS_LETTER(C), ((C >= $a andalso C =< $z) orelse (C >= $A andalso C =< $Z))).
@@ -24,22 +25,39 @@ opsize($B) -> 0;
 opsize($w) -> 1;
 opsize($W) -> 1.
 
+op0("nop")   -> 0;
+op0("ret")   -> 1;
+op0("popf")  -> 2;
+op0("pushf") -> 3;
+op0("cli")   -> 4;
+op0("sei")   -> 5;
+op0("hlt")   -> 6;
+% dbg not supported until it has proper semantics
+% unused ops 8-15
+op0("gseg")  -> 16;
+op0("sseg")  -> 17;
+op0(_) -> nil.
+
 op1("move") -> 0;
-op1("cmp")  -> 1;
-op1("add")  -> 2;
+op1("add")  -> 1;
+op1("cmp")  -> 2;
 op1("sub")  -> 3;
 op1("xor")  -> 4;
 op1("or")   -> 5;
 op1("and")  -> 6;
+% unused op 7
+op1("rol") -> 8;
+op1("ror") -> 9;
+op1("rcl") -> 10;
+op1("rcr") -> 11;
+op1("asl") -> 12; op1("lsl") -> 12;
+op1("asr") -> 13;
+op1("lsr") -> 14;
+% unused op 15
 op1(_) -> nil.
 
-op2("asl") -> 0; op2("lsl") -> 0;
-op2("asr") -> 1;
-op2("lsr") -> 2;
-op2("rol") -> 3;
-op2("ror") -> 4;
-op2("rcl") -> 5;
-op2("rcr") -> 6;
+op2("ld") -> 0;
+op2("st") -> 1;
 op2(_) -> nil.
 
 op3("jz")  -> 0;
@@ -56,27 +74,13 @@ op3("jmp") -> 8;
 op3("jsr") -> 9;
 op3(_) -> nil.
 
-op4("ld") -> 0;
-op4("st") -> 1;
-op4(_) -> nil.
+optype(X, nil, nil, nil) when X /= nil -> {op0, X};
+optype(nil, X, nil, nil) when X /= nil -> {op1, X};
+optype(nil, nil, X, nil) when X /= nil -> {op2, X};
+optype(nil, nil, nil, X) when X /= nil -> {op3, X};
+optype(_, _, _, _) -> error.
 
-ops("nop")   -> 0;
-ops("ret")   -> 2;
-ops("popf")  -> 4;
-ops("pushf") -> 6;
-ops("cli")   -> 8;
-ops("sei")   -> 10;
-ops("hlt")   -> 12;
-ops(_) -> nil.
-
-optype(X, nil, nil, nil, nil) when X /= nil -> {op1, X};
-optype(nil, X, nil, nil, nil) when X /= nil -> {op2, X};
-optype(nil, nil, X, nil, nil) when X /= nil -> {op3, X};
-optype(nil, nil, nil, X, nil) when X /= nil -> {op4, X};
-optype(nil, nil, nil, nil, X) when X /= nil -> {ops, X};
-optype(_, _, _, _, _) -> error.
-
-optype(X) -> optype(op1(X), op2(X), op3(X), op4(X), ops(X)).
+optype(X) -> optype(op0(X), op1(X), op2(X), op3(X)).
 
 %
 % Calculation tree
@@ -341,6 +345,17 @@ parse_direc("db", L, State) ->
 			State2
 	end;
 
+parse_direc("segment", L, State) ->
+	{ok, Idx, L2} = tok_num(L),
+	{ok, Val, L3} = tok_num(skip_ws(L2)),
+	parse_end(skip_ws(L3)),
+
+	io:format("segment ~p ~p~n", [Idx, Val]),
+	
+	% TODO!
+
+	State;
+
 parse_direc("org", L, State) ->
 	{ok, P, L2} = tok_num(L),
 	parse_end(skip_ws(L2)),
@@ -375,24 +390,68 @@ parse_direc("align", L, State) ->
 % Op parsing functions
 %
 
+parse_op0(Code, L, State) when Code < 16 ->
+	% OP0.1
+	State2 = mem_write(State, [
+		2#00000000 + Code]),
+	L1 = skip_ws(L),
+	parse_end(L1),
+	State2;
+parse_op0(Code, [$., X | L], State) when Code >= 16, Code < 32, X >= $0, X =< $3 ->
+	% OP0.2
+	Seg = X - $0,
+	{ok, Reg, L1} = tok_reg(skip_ws(L)),
+	State2 = mem_write(State, [
+		2#00000000 + Code,
+		Reg*16 + Seg]),
+	parse_end(skip_ws(L1)),
+	State2.
+
 parse_op1(Code, [$., S|L1], State) when ?IS_W_B(S) ->
-	% @x, @y
-	% @x, #i
+	% OP1.l @x, @y
+	% OP1.l @x, @y, #i
+	% OP1.l @x, #i <-- implicit y is set to x
+
+	% .l
 	Size = opsize(S),
+
+	% @x
 	{ok, RegN1, L2} = tok_reg(skip_ws(L1)),
-	true = (RegN1 /= 0),
+	true = (RegN1 /= 0 orelse Code /= op1("move")),
+
+	% ,
 	[$, | L3] = skip_ws(L2),
+
+	% @y or #i
 	{L4, State2} = case skip_ws(L3) of
 		Lx1 = [$@ | _] ->
+			% @y
 			{ok, RegN2, Lx2} = tok_reg(Lx1),
-			Sx1 = mem_write(State, [
-				2#11100000 + 16*Size + Code,
-				RegN1 + RegN2*16]),
-			{Lx2, Sx1};
+
+			% check for , #i
+			case skip_ws(Lx2) of
+				[$#, Ly1] ->
+					% #i
+					{ok, Imm, Ly2} = tok_num(skip_ws(Ly1)),
+					Ly3 = skip_ws(Ly2),
+					Sy1 = mem_write(State, [
+						2#01100000 + 16*Size + Code,
+						RegN1*16 + RegN2]),
+					Sy2 = mem_write_imm_size(Sy1, Size+1, Imm),
+					{Ly3, Sy2};
+				Ly1 ->
+					% end of op
+					Sy1 = mem_write(State, [
+						2#01000000 + 16*Size + Code,
+						RegN1*16 + RegN2]),
+					{Ly1, Sy1}
+			end;
 		[$# | Lx1] ->
+			% #i
 			{ok, Imm, Lx2} = tok_num(Lx1),
 			Sx1 = mem_write(State, [
-				16*Size + 32*Code + RegN1]),
+				2#01100000 + 16*Size + Code,
+				RegN1*16 + RegN1]),
 			Sx2 = mem_write_imm_size(Sx1, Size+1, Imm),
 			{Lx2, Sx2}
 	end,
@@ -400,133 +459,216 @@ parse_op1(Code, [$., S|L1], State) when ?IS_W_B(S) ->
 	parse_end(L5),
 	State2.
 
-parse_op2(Code, [$., S|L1], State) when S == $w orelse S == $W ->
-	% @x, @y
-	% @x, #i
-	{ok, RegN1, L2} = tok_reg(skip_ws(L1)),
-	true = (RegN1 /= 0),
-	[$, | L3] = skip_ws(L2),
-	{L4, State2} = case skip_ws(L3) of
-		Lx1 = [$@ | _] ->
-			{ok, RegN2, Lx2} = tok_reg(Lx1),
-			Sx1 = mem_write(State, [
-				2#11111000 + Code,
-				RegN1 + RegN2*16]),
-			{Lx2, Sx1};
-		[$# | Lx1] ->
-			{ok, Imm, Lx2} = tok_num(Lx1),
-			true = (Imm >= 0 andalso Imm =< 15),
-			Sx1 = mem_write(State, [
-				2#11101000 + Code,
-				RegN1 + Imm*16]),
-			{Lx2, Sx1}
-	end,
-	L5 = skip_ws(L4),
-	parse_end(L5),
-	State2.
+parse_op2(Code, [$., VS, $:, VSeg|L1], State) when ?IS_W_B(VS) ->
+	% LD.l:s @x, @y
+	% LD.l:=[^] @x, $baaaa
+	% LD.l:s[<] @x, $aa[, @y]
+	% LD.l:s[>] @x, $aaaa[, @y]
+	% LD.l:s[^] @x, $baaaa
+	% ST.l:s @y, @x
+	% ST.l:=[^] $baaaa, @x
+	% ST.l:s[<] $aa[, @y], @x
+	% ST.l:s[>] $aaaa[, @y], @x
+	% ST.l:s[^] $baaaa, @x
 
-parse_op3(Code, L, State) ->
-	{ok, Imm, L1} = tok_num(skip_ws(L)),
-	L2 = skip_ws(L1),
-	{State2, L3} = case L2 of
-		[$, | Lx1] ->
-			Lx2 = skip_ws(Lx1),
-			{ok, RegN, Lx3} = tok_reg(Lx2),
-			0 = (Imm band 16#FFF),
-			Sx1 = mem_write(State, [
-				2#11100111,
-				Code*16 + RegN,
-				{calc, {unop, o_top8, Imm}}]),
-			{Sx1, Lx3};
-		_ ->
-			Sx1 = case Imm of
-				_ when is_integer(Imm) andalso (Imm band 16#FFF) == 0 -> mem_write(State, [
-					2#11100111,
-					Code*16 + 0,
-					{calc, {unop, o_top8, Imm}}]);
-				_ -> mem_write(State, [
-					2#11110111,
-					{calc, {binop, o_add, Code*16, {unop, o_top4, Imm}}},
-					{calc, {unop, o_low, Imm}},
-					{calc, {unop, o_high, Imm}}])
-			end,
-			{Sx1, L2}
-	end,
-	parse_end(skip_ws(L3)),
-	State2.
+	% .l
+	Size = opsize(VS),
 
-parse_op4_pair(L, _State, RegFollow) ->
-	{ok, Imm, L1} = tok_num(L),
-	L2 = skip_ws(L1),
-	case L2 of
-		[$, | Lx1] -> 
-			Lx2 = skip_ws(Lx1),
-			{ok, RegN2, Lx3} = tok_reg(Lx2),
-			Lx4 = skip_ws(Lx3),
-			case {RegFollow, Lx4} of
-				{false, _} -> {Imm, RegN2, Lx4};
-				{true, [$, | Ly1]} -> {Imm, RegN2, skip_ws(Ly1)};
-				_ -> {Imm, 0, Lx2}
+	% :s/:=
+	{Seg, AbsState} = case VSeg of
+		$= -> {3, true};
+		$3 -> {3, false};
+		C when C >= $0, C =< $3 -> {C-$0, nil}
+	end,
+
+	{Hint, L1a} = case L1 of
+		[$^ | L1ax] -> {far, L1ax};
+		[$> | L1ax] -> {near, L1ax};
+		[$< | L1ax] -> {short, L1ax};
+		_ -> {nil, L1}
+	end,
+
+	% ASSERTIONS.
+	true = (Hint == nil orelse Hint /= far orelse AbsState /= false),
+	true = (Hint == nil orelse Hint == far orelse AbsState /= true),
+
+	{L2, RegN1, RegN2, ImmV} = case Code of
+		0 ->
+			% LD
+			% @x
+			{ok, LRegN1, Lx1} = tok_reg(skip_ws(L1a)),
+			[$, | Lx2] = skip_ws(Lx1),
+			
+			case skip_ws(Lx2) of
+				Ly1 = [$@ | _] ->
+					% @y
+					{ok, LRegN2, Ly2} = tok_reg(skip_ws(Ly1)),
+					case skip_ws(Ly2) of
+						[$, | Lz1] ->
+							Lz2 = skip_ws(Lz1),
+							{ok, LImm, Lz3} = tok_num(Lz2),
+							{skip_ws(Lz3), LRegN1, LRegN2, LImm};
+						Lz1 -> {Lz1, LRegN1, LRegN2, 0}
+					end;
+				Ly1 ->
+					% immediate
+					{ok, LImm, Ly2} = tok_num(skip_ws(Ly1)),
+					case skip_ws(Ly2) of
+						[$, | Lz1] ->
+							% @y also
+							{ok, LRegN2, Lz2} = tok_reg(skip_ws(Lz1)),
+							{skip_ws(Lz2), LRegN1, LRegN2, LImm};
+						Lz1 ->
+							% end
+							{Lz1, LRegN1, 0, LImm}
+					end
 			end;
-		[$; | _] -> {Imm, 0, L2};
-		[] -> {Imm, 0, L2}
-	end.
+		1 ->
+			% ST
+			% check which we have
+			case skip_ws(L1a) of
+				Lx1 = [$@ | _] ->
+					% @y, [imm, ]@x
+					{ok, LRegN2, Lx2} = tok_reg(skip_ws(Lx1)),
+					[$, | Lx3] = skip_ws(Lx2),
 
-parse_op4_spec(0, L1, State) ->
-	{ok, RegN1, L2} = tok_reg(skip_ws(L1)),
-	[$, | L3] = skip_ws(L2),
-	L4 = skip_ws(L3),
-	{Imm, RegN2, L5} = parse_op4_pair(L4, State, false),
-	{RegN1, Imm, RegN2, L5};
-parse_op4_spec(1, L1, State) ->
-	{Imm, RegN2, L2} = parse_op4_pair(skip_ws(L1), State, true),
-	{ok, RegN1, L3} = tok_reg(skip_ws(L2)),
-	{RegN1, Imm, RegN2, L3}.
+					% next will either be a reg or an immediate followed by a reg
+					case skip_ws(Lx3) of
+						Ly1 = [$@ | _] ->
+							% @x
+							{ok, LRegN1, Ly2} = tok_reg(Ly1),
+							{skip_ws(Ly2), LRegN1, LRegN2, 0};
+						Ly1 ->
+							% imm, @x
+							{ok, LImm, Ly2} = tok_num(Ly1),
+							[$, | Ly3] = skip_ws(Ly2),
+							{ok, LRegN1, Ly4} = tok_reg(skip_ws(Ly3)),
+							{skip_ws(Ly4), LRegN1, LRegN2, LImm}
+					end;
+				Lx1 ->
+					% immediate
+					{ok, LImm, Lx2} = tok_num(skip_ws(Lx1)),
+					[$, | Lx3] = skip_ws(Lx2),
 
-parse_op4(Code, [$., S|L1], State) when ?IS_W_B(S) ->
-	% LD.* @x, $Faaaa
-	% LD.* @x, $baa00, @y
-	% LD.* @x, $baaaa, @y
-	% ST.* $Faaaa, @x
-	% ST.* $baa00, @y, @x
-	% ST.* $baaaa, @y, @x
+					% next will be either @y,@x or just @x
+					{ok, LRegFirst, Lx4} = tok_reg(skip_ws(Lx3)),
 
-	Size = opsize(S),
-	{RegN1, ImmV, RegN2, L2} = parse_op4_spec(Code, L1, State),
-	% TODO: given a "late" label, allow the assembler user to make assumptions
-	Imm = calc(State, {calc, {binop, o_and, ImmV, 16#FFFFF}}, false),
+					case skip_ws(Lx4) of
+						[$, | Ly1] ->
+							% @y, @x
+							{ok, LRegSecond, Ly2} = tok_reg(skip_ws(Ly1)),
+							{skip_ws(Ly2), LRegSecond, LRegFirst, LImm};
+						Ly1 ->
+							% @x
+							{skip_ws(Ly1), LRegFirst, 0, LImm}
+					end
+			end
+	end,
 
-	S2 = mem_write(State, [
-		2#11101111 + Size*16]),
-	
-	S3 = case {Imm, RegN2} of
-		{_, 0} when is_integer(Imm) andalso Imm >= 16#F0000 andalso Imm =< 16#FFFFF ->
-			mem_write(S2, [
-				2#00100000 + Code*16 + RegN1,
-				Imm band 16#FF,
-				(Imm bsr 8) band 16#FF]);
-		{_, _} when is_integer(Imm) andalso (Imm band 16#000FF) == 0 ->
-			mem_write(S2, [
-				2#01000000 + Code*16 + RegN1,
-				((Imm bsr 16) band 16#F) + RegN2*16,
-				(Imm bsr 8) band 16#FF]);
-		_ ->
-			mem_write(S2, [
-				2#01100000 + Code*16 + RegN1,
-				{calc, {binop, o_add, RegN2*16, {unop, o_top4, Imm}}},
+	Imm = calc(State, ImmV, false),
+
+	io:format("op2 ~p ~p ~p ~p ~p ~p~n", [RegN1, RegN2, Imm, Seg, AbsState, Hint]),
+
+	Mode = case {RegN1, RegN2, Imm, Seg, AbsState, Hint} of
+		{_, _, 0, _, X, nil} when X /= true -> reg;
+		{_, 0, _, _, X, far} when X /= false, is_integer(Imm) -> far;
+		{_, _, _, _, _, short} when is_integer(Imm), ((Imm band 16#FFFF) >= 16#FF80 orelse (Imm band 16#FFFF) < 16#80) -> short;
+		{_, _, _, _, _, near} when is_integer(Imm) -> near;
+		{_, 0, _, _, X, nil} when X /= false, is_integer(Imm) -> far;
+		{_, _, _, _, X, nil} when X /= true, is_integer(Imm), ((Imm band 16#FFFF) >= 16#FF80 orelse (Imm band 16#FFFF) < 16#80) -> short;
+		{_, _, _, _, X, nil} when X /= true -> near
+	end,
+
+	parse_end(skip_ws(L2)),
+
+	case Mode of
+		reg ->
+			mem_write(State, [
+				2#10000000 + Code*8 + Size*4 + Seg,
+				RegN1*16 + RegN2]);
+		short ->
+			mem_write(State, [
+				2#10100000 + Code*8 + Size*4 + Seg,
+				RegN1*16 + RegN2,
+				{calc, {unop, o_low, Imm}}]);
+		near ->
+			mem_write(State, [
+				2#10110000 + Code*8 + Size*4 + Seg,
+				RegN1*16 + RegN2,
+				{calc, {unop, o_low, Imm}},
+				{calc, {unop, o_high, Imm}}]);
+		far ->
+			mem_write(State, [
+				2#10010000 + Code*8 + Size*4 + Seg,
+				{calc, {binop, o_add, RegN1*16, {unop, o_top4, Imm}}},
 				{calc, {unop, o_low, Imm}},
 				{calc, {unop, o_high, Imm}}])
-	end,
-	L3 = skip_ws(L2),
-	parse_end(L3),
-	S3.
+	end.
 
-parse_ops(Code, L1, State) ->
-	State2 = mem_write(State, [
-		2#00000000 + Code*16]),
-	L2 = skip_ws(L1),
-	parse_end(L2),
-	State2.
+parse_op3(Code, L1, State) ->
+	% OP3= $baaaa[, @x]
+	% OP3: $aaaa
+	% OP3[<] $aa
+	% OP3[>] $aaaa
+	% OP3 $aa[aa]
+
+	{Hint, L1a} = case L1 of
+		[$= | L1ax] -> {abs, L1ax};
+		[$* | L1ax] -> {abs_seg, L1ax};
+		[$< | L1ax] -> {short, L1ax};
+		[$> | L1ax] -> {near, L1ax};
+		_ -> {nil, L1}
+	end,
+
+	% read address
+	{ok, ImmV, L2} = tok_num(skip_ws(L1a)),
+	Imm = calc(State, ImmV, false),
+
+	% check if we have a register following
+	{L3, RegN1} = case skip_ws(L2) of
+		[$, | Lx1] ->
+			% @x
+			{ok, LRegN1, Lx2} = tok_reg(skip_ws(Lx1)),
+			{skip_ws(Lx2), LRegN1};
+		Lx1 -> {Lx1, 0}
+	end,
+
+	io:format("op3 ~p ~p ~p ~p ~p~n", [Code, Imm, RegN1, Hint, L3]),
+
+	% TODO: use this while optimising
+	% RelImmTemp = State#asm_state.pos + 2,
+	Mode = case {Imm, RegN1, Hint} of
+		{_, _, abs} -> abs;
+		{_, 0, abs_seg} -> abs_seg;
+		{_, 0, short} -> short;
+		{_, 0, near} -> near;
+		{_, 0, nil} -> near % TODO: optimise properly, determine whether short or near
+	end,
+
+	case Mode of
+		abs ->
+			mem_write(State, [
+				2#11000000 + Code,
+				{calc, {binop, o_add, RegN1*16, {unop, o_top4, Imm}}},
+				{calc, {unop, o_low, Imm}},
+				{calc, {unop, o_high, Imm}}]);
+		abs_seg ->
+			mem_write(State, [
+				2#11010000 + Code,
+				{calc, {unop, o_low, Imm}},
+				{calc, {unop, o_high, Imm}}]);
+		short ->
+			RelImm = State#asm_state.pos + 2,
+			mem_write(State, [
+				2#11110000 + Code,
+				{calc, {unop, o_low, {binop, o_sub, Imm, RelImm}}}]);
+		near ->
+			RelImm = State#asm_state.pos + 3,
+			mem_write(State, [
+				2#11110000 + Code,
+				{calc, {unop, o_low, {binop, o_sub, Imm, RelImm}}},
+				{calc, {unop, o_high, {binop, o_sub, Imm, RelImm}}}])
+	end.
 
 %
 % Line parsing
@@ -543,11 +685,10 @@ parse_asm_line(L1 = [C | _], State) when ?IS_LETTER(C) orelse C == $_ ->
 			State2 = label_add(State, Name),
 			parse_asm_line(skip_ws(T2), State2);
 		_ -> case optype(string:to_lower(Name)) of
+			{op0, X} -> parse_op0(X, L2, State);
 			{op1, X} -> parse_op1(X, L2, State);
 			{op2, X} -> parse_op2(X, L2, State);
 			{op3, X} -> parse_op3(X, L2, State);
-			{op4, X} -> parse_op4(X, L2, State);
-			{ops, X} -> parse_ops(X, L2, State);
 			error -> error(lists:flatten(io_lib:format("invalid opcode ~p", [Name])))
 		end
 	end;
