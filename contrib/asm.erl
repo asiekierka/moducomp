@@ -46,14 +46,14 @@ op1("xor")  -> 4;
 op1("or")   -> 5;
 op1("and")  -> 6;
 % unused op 7
-% unused op 8
-op1("asl") -> 9; op1("lsl") -> 9;
-op1("asr") -> 10;
-op1("lsr") -> 11;
-op1("rol") -> 12;
-op1("ror") -> 13;
-op1("rcl") -> 14;
-op1("rcr") -> 15;
+op1("rol") -> 8;
+op1("ror") -> 9;
+op1("rcl") -> 10;
+op1("rcr") -> 11;
+op1("asl") -> 12; op1("lsl") -> 12;
+op1("asr") -> 13;
+op1("lsr") -> 14;
+% unused op 15
 op1(_) -> nil.
 
 op2("ld") -> 0;
@@ -608,6 +608,8 @@ parse_op2(Code, [$., VS, $:, VSeg|L1], State) when ?IS_W_B(VS) ->
 parse_op3(Code, L1, State) ->
 	% OP3= $baaaa[, @x]
 	% OP3: $aaaa[, @x]
+	% OP3[<] $aa
+	% OP3[>] $aaaa
 	% OP3 $aa[aa]
 
 	{Hint, L1a} = case L1 of
@@ -633,7 +635,8 @@ parse_op3(Code, L1, State) ->
 
 	io:format("op3 ~p ~p ~p ~p ~p~n", [Code, Imm, RegN1, Hint, L3]),
 
-	RelImmTemp = State#asm_state.pos + 2,
+	% TODO: use this while optimising
+	% RelImmTemp = State#asm_state.pos + 2,
 	Mode = case {Imm, RegN1, Hint} of
 		{_, _, abs} -> abs;
 		{_, 0, abs_seg} -> abs_seg;

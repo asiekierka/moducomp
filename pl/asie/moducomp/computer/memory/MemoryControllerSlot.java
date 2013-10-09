@@ -38,20 +38,23 @@ public class MemoryControllerSlot implements IMemoryController
 
 		if(addr < 0xFC000) {
 			IMemory slot = this.memorySlots[(addr >> 16) & 0xF];
+			if(slot == null) return (byte)0xFF;
 			synchronized(slot) {
-				return (slot == null ? (byte)0xFF : slot.read8(cpu, addr & 0xFFFF));
+				return slot.read8(cpu, addr & 0xFFFF);
 			}
 		} else if(addr <= 0xFCFFF) { // Reserved
 			return (byte)0xFF;
 		} else if(addr <= 0xFDFFF) { // Devices
 			IMemory slot = this.deviceSlots[(addr>>8) & 15];
+			if(slot == null) return (byte)0xFF;
 			synchronized(slot) {
-				return (slot == null ? (byte)0xFF : slot.read8(cpu, addr & 0xFF));
+				return slot.read8(cpu, addr & 0xFF);
 			}
 		} else { // ROM
 			IMemory slot = this.slots[15];
+			if(slot == null) return (byte)0xFF;
 			synchronized(slot) {
-				return (slot == null ? (byte)0xFF : slot.read8(cpu, addr & 0x1FFF));
+				return slot.read8(cpu, addr & 0x1FFF);
 			}
 		}
 	}

@@ -21,40 +21,66 @@ public class CPUAreia implements ICPU
 	public static final int F_SIGNED = 0x0008;
 	public static final int F_INTERRUPT = 0x0010;
 
+	// NOTE: uop format differs slightly:
+	//
+	// lmbboooo xxxxyyyy iiiiiiii iiiiiiii
+	//
+	// where:
+	// l = size (0 = byte, 1 = word)
+	// m = mode (depends on the op)
+	// b = op bank
+	// o = opcode
+	// x = register x
+	// y = register y OR in some cases the top nybble of a 20-bit address
+	// i = immediate value
+	
+	// OP0
 	public static final int UOP_NOP = 0;
-	public static final int UOP_MOVE = 1;
-	public static final int UOP_CMP = 2;
-	public static final int UOP_ADD = 3;
-	public static final int UOP_SUB = 4;
-	public static final int UOP_XOR = 5;
-	public static final int UOP_OR = 6;
-	public static final int UOP_AND = 7;
-	public static final int UOP_ASL = 8;
-	public static final int UOP_ASR = 9;
-	public static final int UOP_LSR = 10;
-	public static final int UOP_ROL = 11;
-	public static final int UOP_ROR = 12;
-	public static final int UOP_RCL = 13;
-	public static final int UOP_RCR = 14;
-	public static final int UOP_JZ = 15;
-	public static final int UOP_JNZ = 16;
-	public static final int UOP_JC = 17;
-	public static final int UOP_JNC = 18;
-	public static final int UOP_JV = 19;
-	public static final int UOP_JNV = 20;
-	public static final int UOP_JS = 21;
-	public static final int UOP_JNS = 22;
-	public static final int UOP_JMP = 23;
-	public static final int UOP_JSR = 24;
-	public static final int UOP_RET = 25;
-	public static final int UOP_POPF = 26;
-	public static final int UOP_PUSHF = 27;
-	public static final int UOP_CLI = 28;
-	public static final int UOP_SEI = 29;
-	public static final int UOP_HLT = 30;
+	public static final int UOP_RET = 1;
+	public static final int UOP_POPF = 2;
+	public static final int UOP_PUSHF = 3;
+	public static final int UOP_CLI = 4;
+	public static final int UOP_SEI = 5;
+	public static final int UOP_HLT = 6;
+	// unused op 7
+	public static final int UOP_SSEG = 8; // we just map these here to make our lives easier
+	public static final int UOP_GSEG = 9;
+	// unused ops 12-15
 
-	public static final int UOP_LD = 64;
-	public static final int UOP_ST = 96;
+	// OP1
+	public static final int UOP_MOVE = 16;
+	public static final int UOP_ADD = 17;
+	public static final int UOP_CMP = 18;
+	public static final int UOP_SUB = 19;
+	public static final int UOP_XOR = 20;
+	public static final int UOP_OR = 21;
+	public static final int UOP_AND = 22;
+	// unused op 23
+	public static final int UOP_ROL = 24;
+	public static final int UOP_ROR = 25;
+	public static final int UOP_RCL = 26;
+	public static final int UOP_RCR = 27;
+	public static final int UOP_ASR = 28;
+	public static final int UOP_ASL = 29;
+	public static final int UOP_LSR = 30;
+	// unused op 31
+	
+	// OP2
+	public static final int UOP_LD = 32;
+	public static final int UOP_ST = 40;
+	
+	// OP3
+	public static final int UOP_JZ = 48;
+	public static final int UOP_JNZ = 49;
+	public static final int UOP_JC = 50;
+	public static final int UOP_JNC = 51;
+	public static final int UOP_JV = 52;
+	public static final int UOP_JNV = 53;
+	public static final int UOP_JS = 54;
+	public static final int UOP_JNS = 55;
+	public static final int UOP_JMP = 56;
+	public static final int UOP_JSR = 57;
+	// unused ops 58-63
 
 	private IMemory memctl;
 	private int pc;
@@ -62,6 +88,7 @@ public class CPUAreia implements ICPU
 	private boolean halted;
 	private boolean open_hatch;
 	private short regs[] = new short[16];
+	private byte segs[] = new byte[4];
 	private byte intregs[] = new byte[128];
 
 	private class SavedUop
@@ -172,6 +199,8 @@ public class CPUAreia implements ICPU
 		this.flags = 0;
 		for(int i = 0; i < 16; i++)
 			this.regs[i] = 0;
+		for(int i = 0; i < 4; i++)
+			this.segs[i] = 0;
 
 		int pc_low = 0xFFFF & (int)this.read16(0xFFFFC);
 		int pc_high = 0xFF & (int)this.read8(0xFFFFE);
@@ -201,6 +230,8 @@ public class CPUAreia implements ICPU
 	public void debugPC(int pc) {
 		System.out.printf("%05X:", pc);
 		System.out.printf(" %04X", 0xFFFF & (int)this.flags);
+		for(int i = 0; i < 4; i++)
+			System.out.printf(" %02X", 0xFF & (int)this.segs[i]);
 		for(int i = 1; i < 16; i++)
 			System.out.printf(" %04X", 0xFFFF & (int)this.regs[i]);
 		System.out.println();
@@ -219,140 +250,112 @@ public class CPUAreia implements ICPU
 		int op = 0xFF & (int)this.fetch8();
 
 		int rop = -1;
+		int rmode = 0;
 		int rx = 0;
 		int ry = 0;
 		int rimm = 0;
 		int rsize = 0;
 
-		if((op & 0xE0) == 0xE0)
+		switch((op >> 6) & 3)
 		{
-			int extra = 0xFF & (int)this.fetch8();
-			int ex0 = (extra & 15);
-			int ex1 = (extra >> 4);
+			case 0:
+				// OP0
+				rsize = 1;
+				if(op < 7) {
+					rop = (op & 63);
+				} else if(op >= 16 && op <= 17) {
+					rop = (op & 7) + 8;
+					int rpair = 0xFF & (int)this.fetch8();
+					rx = rpair >> 4;
+					ry = rpair & 15;
+					assert(ry <= 3);
+				}
+				break;
 
-			if((op & 0x07) == 0x07)
-			{
-				// OP3/4
-				if((op & 0x08) == 0)
+			case 1:
+				// OP1
+				if((op & 7) != 7)
 				{
-					// OP3
-					if((op & 0x10) == 0)
-					{
-						rsize = 1;
-						rx = ex0;
-						rimm = 0xFF & (int)this.fetch8();
-						ry = (rimm>>4);
-						rimm <<= 12;
-						rimm &= 0xFFFF;
-					} else {
-						rsize = 2;
-						rx = 0;
-						ry = ex0;
-						rimm = 0xFFFF & (int)this.fetch16();
-					}
+					rsize = 1 + ((op>>4) & 1);
+					rmode = (op>>5) & 1;
+					rop = (op & 15) + 16;
 
-					if(ex1 < 10)
-						rop = UOP_JZ + ex1;
-				} else {
-					// OP4
-					rx = ex0;
-					rop = ((ex1 & 1) == 0 ? UOP_LD : UOP_ST);
-					int meep = 0;
-					ry = 0;
-					rsize = (op & 0x10) != 0 ? 2 : 1;
-					switch(ex1>>1)
+					int rpair = 0xFF & (int)this.fetch8();
+					rx = rpair >> 4;
+					ry = rpair & 15;
+
+					if(rmode == 0)
 					{
-						case 1:
-							rimm = 0xFFFF & (int)this.fetch16();
-							rop |= 0x0F;
-							break;
-						case 2:
-							meep = 0xFF & (int)this.fetch8();
-							rimm = 0xFF & (int)this.fetch8();
-							rimm <<= 8;
-							rop |= meep & 0x0F;
-							ry = meep>>4;
-							break;
-						case 3:
-							meep = 0xFF & (int)this.fetch8();
-							rimm = 0xFFFF & (int)this.fetch16();
-							rop |= 0x10;
-							rop |= meep & 0x0F;
-							ry = meep>>4;
-							break;
-						default:
-							rop = -1;
+						// regs only, load from x,y
+					} else if(rsize == 2) {
+						// immediate word, load from y,i
+						rimm = 0xFFFF & (int)this.fetch16();
+					} else {
+						// immediate byte, load from y,i
+						rimm = 0xFF & (int)this.fetch8();
 					}
 				}
-			} else {
-				// OP1/2 @y
-				rx = ex0;
-				ry = ex1;
-				switch((op>>3)&3)
+				break;
+
+			case 2: {
+				// OP2
+				rsize = 1 + ((op>>2) & 1);
+				rmode = ((op>>4) & 3) == 1 ? 1 : 0;
+				rop = (op & 0x0B) + 32;
+
+				// If mode == 1: an extra top nybble is given by Y field, plus when seg == 3, we treat it as a seg of $00
+				// Low two bits of opcode denote which segment is used
+
+				int rpair = 0xFF & (int)this.fetch8();
+				rx = (rpair >> 4);
+				ry = (rpair & 15);
+
+				switch((op>>4) & 3)
 				{
 					case 0:
-						// OP1.b @y
-						rop = UOP_MOVE + (op & 7);
-						rsize = 1;
 						break;
 					case 1:
-						// OP2.w #y
-						rop = UOP_ASL + (op & 7);
-						rsize = 2;
-						rimm = ry;
-						ry = 0;
+					case 3:
+						rimm = 0xFFFF & (int)this.fetch16();
 						break;
 					case 2:
-						// OP1.w @y
-						rop = UOP_MOVE + (op & 7);
-						rsize = 2;
-						break;
-					case 3:
-						// OP2.w @y
-						rop = UOP_ASL + (op & 7);
-						rsize = 2;
+						rimm = 0xFFFF & (int)(byte)this.fetch8();
 						break;
 				}
-			}
-		} else if((op & 0x0F) == 0x00) {
-			// Special ops
-			switch(op>>4)
-			{
-				case 0:
-					rop = UOP_NOP;
-					break;
-				case 2:
-					rop = UOP_RET;
-					break;
-				case 4:
-					rop = UOP_POPF;
-					break;
-				case 6:
-					rop = UOP_PUSHF;
-					break;
-				case 8:
-					rop = UOP_CLI;
-					break;
-				case 10:
-					rop = UOP_SEI;
-					break;
-				case 12:
-					rop = UOP_HLT;
-					break;
-			}
-		} else {
-			// OP1 immediate
-			rop = (op>>5) + UOP_MOVE;
-			rx = (op & 0x0F);
-			ry = 0;
-			if((op & 0x10) == 0)
-			{
-				rimm = 0xFF & (int)this.fetch8();
-				rsize = 1;
-			} else {
-				rimm = 0xFFFF & (int)this.fetch16();
-				rsize = 2;
-			}
+
+			} break;
+
+			case 3:
+				// OP3
+				rsize = 1 + ((op>>4) & 1);
+
+				if((op & 15) < 10)
+					rop = (op & 15) + 48;
+
+				rmode = (op>>5) & 1;
+
+				// If mode == 1, then size is size, and this jump is relative.
+				// Otherwise,
+				//   if size == 0: top nybble is Y
+				//   if size == 1: top nybble is (pc>>16)
+				switch((op>>4) & 3)
+				{
+					case 0: {
+						int rpair = 0xFF & (int)this.fetch8();
+						rx = rpair >> 4;
+						ry = rpair & 15; // actually top nybble of the 20-bit PC
+					} // follow through
+					case 1:
+						rimm = 0xFFFF & (int)this.fetch16();
+						break;
+					case 2:
+						rimm = 0xFFFF & (int)(byte)this.fetch8(); // note, SIGNED
+						break;
+					case 3:
+						rimm = 0xFFFF & (int)this.fetch16(); // note, SIGNED
+						break;
+				}
+				break;
 		}
 
 		if(rop == -1)
@@ -360,6 +363,7 @@ public class CPUAreia implements ICPU
 
 		int ret = 0;
 		ret |= (rsize == 2 ? 0x80000000 : 0x00000000);
+		ret |= (rmode & 1)<<30;
 		ret |= (rop & 0x7F)<<24;
 		ret |= (ry & 0x0F)<<20;
 		ret |= (rx & 0x0F)<<16;
@@ -382,11 +386,24 @@ public class CPUAreia implements ICPU
 		this.setFlag(F_OVERFLOW, ((0x6996 >> ((v^(v>>4)) & 0xf)) & 1) != 0);
 	}
 
-	private short doUopStep(int size, int op, int rx, int ry, int imm, short fmask) throws HaltCPU
+	private short doUopStep(int size, int mode, int op, int rx, int ry, int imm, short fmask) throws HaltCPU
 	{
-		if(op >= UOP_JZ && op <= UOP_JSR)
+		if((op & 0x30) == 0x30)
 		{
-			imm = 0xFFFFF & (imm + (ry<<16) + (0xFFFF & (int)this.regs[rx]));
+			// set stuff up for our jumps
+			if(mode == 1)
+			{
+				// relative
+				imm = (this.pc + (int)(short)imm);
+			} else if(size == 0) {
+				// absolute + @x
+				imm = (ry<<16) + imm + (0xFFFF & (int)this.regs[rx]);
+			} else {
+				// relative to current pc bank (whyyyyy)
+				imm = (this.pc & 0xF0000) | imm;
+			}
+			imm &= 0xFFFFF;
+			//System.out.printf("JUMP: %05X -> %05X [%d]\n", this.pc, imm, op);
 		}
 
 		switch(op)
@@ -580,33 +597,46 @@ public class CPUAreia implements ICPU
 				this.halted = true;
 				throw new HaltCPU();
 				//break;
+			case UOP_GSEG:
+				return this.segs[ry & 3];
+			case UOP_SSEG:
+				this.segs[ry & 3] = (byte)this.regs[rx];
+				break;
+			case UOP_LD+0:
+			case UOP_LD+1:
+			case UOP_LD+2:
+			case UOP_LD+3: {
+				// LD
+				int seg = (op & 3);
+				int offs = ((mode == 0
+					? (0xFF & (int)this.segs[seg])
+					: (seg == 3 ? 0 : (0xFF & (int)this.segs[seg])) + (ry<<16))
+						+ imm) & 0xFFFFF;
+				//System.out.printf("%05X %d\n", this.pc, size);
+				//System.out.printf("LD %05X\n", offs);
+				if(size == 2)
+					return this.read16(offs);
+				else
+					return this.read8(offs);
+			} //break;
+			case UOP_ST+0:
+			case UOP_ST+1:
+			case UOP_ST+2:
+			case UOP_ST+3: {
+				// ST
+				int seg = (op & 3);
+				int offs = ((mode == 0
+					? (0xFF & (int)this.segs[seg])
+					: (seg == 3 ? 0 : (0xFF & (int)this.segs[seg])) + (ry<<16))
+						+ imm) & 0xFFFFF;
+				//System.out.printf("ST %05X\n", offs);
+				if(size == 2)
+					this.write16(offs, this.regs[rx]);
+				else
+					this.write8(offs, (byte)this.regs[rx]);
+			} break;
 			default:
-				if((op & 0x40) != 0)
-				{
-					int top = (op & 0x0F);
-					int vy = 0xFFFF & (int)this.regs[ry];
-					int offs = (vy + (top<<16) + imm);
-
-					if((op & 0x20) == 0)
-					{
-						// LD
-						//System.out.printf("%05X %d\n", this.pc, size);
-						//System.out.printf("LD %05X\n", offs);
-						if(size == 2)
-							return this.read16(offs);
-						else
-							return this.read8(offs);
-					} else {
-						// ST
-						//System.out.printf("ST %05X\n", offs);
-						if(size == 2)
-							this.write16(offs, this.regs[rx]);
-						else
-							this.write8(offs, (byte)this.regs[rx]);
-					}
-				} else {
-					throw new RuntimeException(String.format("unsupported uop: %d %d %d %d %04X", op, size, rx, ry, imm));
-				}
+				throw new RuntimeException(String.format("unsupported uop: %d %d %d %d %04X", op, size, rx, ry, imm));
 		}
 
 		return this.regs[rx];
@@ -615,12 +645,13 @@ public class CPUAreia implements ICPU
 	private void doUop(int uop_data, short fmask, boolean use_ret) throws HaltCPU
 	{
 		int size = ((uop_data>>31) & 1) + 1;
-		int op = (uop_data>>24) & 0x7F;
-		int rx = (uop_data>>16) & 0x0F;
-		int ry = (uop_data>>20) & 0x0F;
+		int mode = ((uop_data>>30) & 1);
+		int op = (uop_data>>24) & 0x3F;
+		int rx = (uop_data>>20) & 0x0F;
+		int ry = (uop_data>>16) & 0x0F;
 		int imm = (uop_data) & 0xFFFF;
 
-		short ret = doUopStep(size, op, rx, ry, imm, fmask);
+		short ret = doUopStep(size, mode, op, rx, ry, imm, fmask);
 
 		if(use_ret)
 		{
@@ -655,13 +686,16 @@ public class CPUAreia implements ICPU
 		if(rx == 0)
 			return false;
 
-		if(op >= UOP_MOVE && op <= UOP_RCL)
+		switch((op>>4) & 3)
 		{
-			return true; // TODO: actually check these
-		} else if(op >= UOP_JZ && op <= UOP_HLT) {
-			return false;
-		} else {
-			return true;
+			case 0:
+				return op == UOP_GSEG;
+			case 1:
+				return op != UOP_CMP;
+			case 2:
+				return op < UOP_ST;
+			default:
+				return false;
 		}
 	}
 
@@ -744,7 +778,7 @@ public class CPUAreia implements ICPU
 		int uop_data = loadUop();
 		int ncyc = this.cycles;
 
-		int op = (uop_data>>24) & 0x7F;
+		int op = (uop_data>>24) & 0x3F;
 		int rx = (uop_data>>16) & 0x0F;
 
 		SavedUop sop = new SavedUop(uop_data, ncyc - ocyc, this.pc, (short)0xFFFF, opReturns(op, rx), opCanJump(op));
