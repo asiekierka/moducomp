@@ -43,8 +43,8 @@ public class CPUAreia implements ICPU
 	public static final int UOP_SEI = 5;
 	public static final int UOP_HLT = 6;
 	// unused op 7
-	public static final int UOP_SSEG = 8; // we just map these here to make our lives easier
-	public static final int UOP_GSEG = 9;
+	public static final int UOP_GSEG = 8; // we just map these here to make our lives easier
+	public static final int UOP_SSEG = 9;
 	// unused ops 12-15
 
 	// OP1
