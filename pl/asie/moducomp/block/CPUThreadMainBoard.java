@@ -1,6 +1,8 @@
 package pl.asie.moducomp.block;
 
 import pl.asie.moducomp.api.computer.ICPU;
+import pl.asie.moducomp.api.computer.IMemory;
+import pl.asie.moducomp.api.computer.IMemoryController;
 
 public class CPUThreadMainBoard implements Runnable {
 

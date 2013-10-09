@@ -56,6 +56,16 @@ public class TileEntityMainBoard extends TileEntityInventory {
 		return list;
 	}
 	
+	private void unloadPeripherals() {
+		for(IEntityPeripheral peripheral: getPeripherals()) {
+			peripheral.deinit(cpu);
+		}
+	}
+	
+	private void unload() {
+		unloadPeripherals();
+	}
+	
 	private ICPU cpu;
 	private IMemoryController memory;
 	
@@ -73,13 +83,6 @@ public class TileEntityMainBoard extends TileEntityInventory {
 		// Get memory
 		this.memory = getMemoryController();
 		if(this.memory == null) return;
-		// TODO: TEMPORARY CODE - ROM
-		byte[] romData = new byte[8192];
-		try {
-			ModularComputing.class.getClassLoader().getResourceAsStream("assets/moducomp/bios.rom").read(romData);
-		} catch(Exception e) { e.printStackTrace(); return; }
-		MemoryHandlerROM rom = new MemoryHandlerROM(romData);
-		this.memory.setSlot(15, rom);
 		// Get CPU
 		ItemStack cpuStack = this.getStackInSlot(0);
 		IItemCPU itemCPU = (IItemCPU)cpuStack.getItem();
@@ -90,9 +93,17 @@ public class TileEntityMainBoard extends TileEntityInventory {
 		int i = 0;
 		for(IEntityPeripheral peripheral: getPeripherals()) {
 			ModularComputing.instance.logger.info("Adding peripheral: " + peripheral.toString() + ", slot "+i);
-			this.memory.setDeviceSlot(i, peripheral.init(this.cpu, this.memory));
-			i++;
-			if(i >= 15) break; // All slots taken!
+			if(peripheral.getPreferredDeviceID() >= 0 && peripheral.getPreferredDeviceID() <= 15) {
+				int id = peripheral.getPreferredDeviceID();
+				if(this.memory.getDeviceSlot(id) == null)
+					this.memory.setDeviceSlot(id, peripheral.init(this.cpu, this.memory));
+			} else {
+				while(this.memory.getDeviceSlot(i) != null) i++;
+				if(i >= 15) break;
+				this.memory.setDeviceSlot(i, peripheral.init(this.cpu, this.memory));
+				i++;
+				if(i >= 15) break; // All slots taken!
+			}
 		}
 		// Reset
 		cpu.setMemoryHandler(memory);
@@ -106,6 +117,7 @@ public class TileEntityMainBoard extends TileEntityInventory {
 		if(currentThread != null) {
 			currentThread.kill();
 			currentThread = null;
+			unload();
 		}
 	}
 }

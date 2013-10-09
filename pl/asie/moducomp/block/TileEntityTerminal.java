@@ -38,6 +38,7 @@ public class TileEntityTerminal extends TileEntityInventory implements IEntityPe
 	
 	public TileEntityTerminal() {
 		super(1, 1, "block.moducomp.terminal");
+		this.terminal = new IOHandlerTerminal(this);
 	}
 	
 	public void print(short color, short chr) { print(color, chr, false); }
@@ -142,9 +143,8 @@ public class TileEntityTerminal extends TileEntityInventory implements IEntityPe
     }
     
     public IMemory init(ICPU cpu, IMemoryController memoryController) {
-    	//if(this.cpu != null) return null;
+    	if(this.cpu != null) return null;
     	this.cpu = cpu;
-		this.terminal = new IOHandlerTerminal(this);
 		clear(true);
         return this.terminal;
     }
@@ -169,4 +169,9 @@ public class TileEntityTerminal extends TileEntityInventory implements IEntityPe
     	this.terminal = null;
     	clear(true);
     }
+
+	@Override
+	public int getPreferredDeviceID() {
+		return -1;
+	}
 }

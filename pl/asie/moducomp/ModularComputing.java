@@ -15,6 +15,7 @@ import pl.asie.moducomp.integration.ModIntegration;
 import pl.asie.moducomp.item.ItemCPUAreia;
 import pl.asie.moducomp.item.ItemPaperTape;
 import pl.asie.moducomp.item.ItemRAM;
+import pl.asie.moducomp.item.ItemROM;
 import pl.asie.moducomp.lib.ITileEntityOwner;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
@@ -42,6 +43,7 @@ public class ModularComputing {
 	public BlockTerminal blockTerminal;
 	public ItemPaperTape itemPaperTape;
 	public ItemRAM itemRAM;
+	public ItemROM itemROM;
 	public ItemCPUAreia itemCPUAreia;
 	
 	public CreativeTabModuComp tab;
@@ -95,7 +97,10 @@ public class ModularComputing {
     	
     	itemPaperTape = (ItemPaperTape) registerItem(ItemPaperTape.class, "moducomp.paper_tape", 19200);
     	itemRAM = (ItemRAM) registerItem(ItemRAM.class, "moducomp.ram", 19201);
+    	itemROM = (ItemROM) registerItem(ItemROM.class, "moducomp.rom", 19203);
     	itemCPUAreia = (ItemCPUAreia) registerItem(ItemCPUAreia.class, "moducomp.cpu_areia", 19202);
+    	
+    	itemROM.registerROM("bios.rom", "Monitor");
     	
     	config.save();
     	proxy.setupEvents();

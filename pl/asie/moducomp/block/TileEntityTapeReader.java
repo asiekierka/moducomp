@@ -20,8 +20,11 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
 public class TileEntityTapeReader extends TileEntityInventory implements IBundledEmitter, IConnectable, IEntityPeripheral {
+	private IOHandlerTapeReader handler;
+	
 	public TileEntityTapeReader() {
 		super(1, 1, "block.moducomp.tape_reader");
+		handler = new IOHandlerTapeReader(this);
 	}
 	
 	public IItemTape getHandler() {
@@ -101,10 +104,15 @@ public class TileEntityTapeReader extends TileEntityInventory implements IBundle
 
 	@Override
 	public IMemory init(ICPU cpu, IMemoryController memoryController) {
-		return new IOHandlerTapeReader(this);
+		return handler;
 	}
 
 	@Override
 	public void deinit(ICPU cpu) {
+	}
+	
+	@Override
+	public int getPreferredDeviceID() {
+		return -1;
 	}
 }

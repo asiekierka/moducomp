@@ -15,6 +15,7 @@ public class MemoryControllerSlot implements IMemoryController
 	}
 
 	public void setSlot(int idx, IMemory slot) {
+		if(idx < 0 && idx > 15) return;
 		this.slots[idx] = slot;
 		if(idx == 0) {
 			this.memorySlots[0] = slot;
@@ -29,7 +30,13 @@ public class MemoryControllerSlot implements IMemoryController
 	}
 	
 	public void setDeviceSlot(int idx, IMemory slot) {
+		if(idx < 0 && idx > 15) return;
 		this.deviceSlots[idx] = slot;
+	}
+
+	public IMemory getDeviceSlot(int idx) {
+		if(idx < 0 && idx > 15) return null;
+		return this.deviceSlots[idx];
 	}
 
 	public byte read8(ICPU cpu, int addr)
