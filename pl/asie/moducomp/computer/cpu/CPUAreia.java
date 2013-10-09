@@ -411,11 +411,11 @@ public class CPUAreia implements ICPU
 			case UOP_NOP:
 				break;
 			case UOP_MOVE:
-				return (short)(ry != 0 ? this.regs[ry] : imm);
+				return (short)(mode == 0 ? this.regs[ry] : imm);
 			case UOP_CMP:
 			case UOP_SUB: {
-				int vx = 0xFFFF & (int)this.regs[rx];
-				int vy = (ry == 0 ? imm : 0xFFFF & (int)this.regs[ry]);
+				int vx = 0xFFFF & (int)this.regs[(mode == 0 ? rx : ry)];
+				int vy = (mode != 0 ? imm : 0xFFFF & (int)this.regs[ry]);
 				int ret = vx - vy;
 				if((fmask & F_CARRY) != 0) this.setFlag(F_CARRY, vx < vy);
 				if((fmask & F_ZERO) != 0) this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
@@ -441,8 +441,8 @@ public class CPUAreia implements ICPU
 					return (short)ret;
 			} break;
 			case UOP_ADD: {
-				int vx = 0xFFFF & (int)this.regs[rx];
-				int vy = (ry == 0 ? imm : 0xFFFF & (int)this.regs[ry]);
+				int vx = 0xFFFF & (int)this.regs[(mode == 0 ? rx : ry)];
+				int vy = (mode != 0 ? imm : 0xFFFF & (int)this.regs[ry]);
 				int ret = vx + vy;
 				if((fmask & F_CARRY) != 0) this.setFlag(F_CARRY, (size == 2 ? ret >= 0x10000 : ret >= 0x100));
 				if((fmask & F_ZERO) != 0) this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
@@ -468,8 +468,8 @@ public class CPUAreia implements ICPU
 					return (short)ret;
 			} break;
 			case UOP_XOR: {
-				int vx = this.regs[rx];
-				int vy = (ry == 0 ? imm : this.regs[ry]);
+				int vx = 0xFFFF & (int)this.regs[(mode == 0 ? rx : ry)];
+				int vy = (mode != 0 ? imm : 0xFFFF & (int)this.regs[ry]);
 				int ret = vx ^ vy;
 				if((fmask & F_OVERFLOW) != 0) this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
 				if((fmask & F_SIGNED) != 0) this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
@@ -477,8 +477,8 @@ public class CPUAreia implements ICPU
 				return (short)ret;
 			} //break;
 			case UOP_OR: {
-				int vx = this.regs[rx];
-				int vy = (ry == 0 ? imm : this.regs[ry]);
+				int vx = 0xFFFF & (int)this.regs[(mode == 0 ? rx : ry)];
+				int vy = (mode != 0 ? imm : 0xFFFF & (int)this.regs[ry]);
 				int ret = vx | vy;
 				if((fmask & F_OVERFLOW) != 0) this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
 				if((fmask & F_SIGNED) != 0) this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
@@ -486,8 +486,8 @@ public class CPUAreia implements ICPU
 				return (short)ret;
 			} //break;
 			case UOP_AND: {
-				int vx = this.regs[rx];
-				int vy = (ry == 0 ? imm : this.regs[ry]);
+				int vx = 0xFFFF & (int)this.regs[(mode == 0 ? rx : ry)];
+				int vy = (mode != 0 ? imm : 0xFFFF & (int)this.regs[ry]);
 				if(size == 1)
 					vy |= 0xFF00;
 				int ret = vx & vy;
@@ -497,8 +497,8 @@ public class CPUAreia implements ICPU
 				return (short)ret;
 			} //break;
 			case UOP_ASL: {
-				int vx = 0xFFFF & (int)this.regs[rx];
-				int vy = (ry == 0 ? imm : this.regs[ry]) & 0xF;
+				int vx = 0xFFFF & (int)this.regs[(mode == 0 ? rx : ry)];
+				int vy = (mode != 0 ? imm : 0xFFFF & (int)this.regs[ry]);
 				int ret = vx << vy;
 				if((fmask & F_OVERFLOW) != 0) this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
 				if((fmask & F_SIGNED) != 0) this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
@@ -507,8 +507,8 @@ public class CPUAreia implements ICPU
 				return (short)ret;
 			} //break;
 			case UOP_ASR: {
-				int vx = this.regs[rx];
-				int vy = (ry == 0 ? imm : this.regs[ry]) & 0xF;
+				int vx = 0xFFFF & (int)this.regs[(mode == 0 ? rx : ry)];
+				int vy = (mode != 0 ? imm : 0xFFFF & (int)this.regs[ry]);
 				int ret = vx >> vy;
 				int retpre = (vy == 0 ? vx << 1 : vx >> (vy-1));
 				if((fmask & F_OVERFLOW) != 0) this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
@@ -518,8 +518,8 @@ public class CPUAreia implements ICPU
 				return (short)ret;
 			} //break;
 			case UOP_LSR: {
-				int vx = 0xFFFF & (int)this.regs[rx];
-				int vy = (ry == 0 ? imm : this.regs[ry]) & 0xF;
+				int vx = 0xFFFF & (int)this.regs[(mode == 0 ? rx : ry)];
+				int vy = (mode != 0 ? imm : 0xFFFF & (int)this.regs[ry]);
 				int ret = vx >>> vy;
 				int retpre = (vy == 0 ? vx << 1 : vx >>> (vy-1));
 				if((fmask & F_OVERFLOW) != 0) this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
