@@ -395,9 +395,11 @@ public class CPUAreia implements ICPU
 			{
 				// relative
 				imm = (this.pc + (int)(short)imm);
-			} else if(size == 0) {
+			} else if(size == 1) {
 				// absolute + @x
 				imm = (ry<<16) + imm + (0xFFFF & (int)this.regs[rx]);
+				// This op might still be broken. Tread with caution.
+				//throw new RuntimeException(String.format("address %05X @%i abs", imm, rx));
 			} else {
 				// relative to current pc bank (whyyyyy)
 				imm = (this.pc & 0xF0000) | imm;

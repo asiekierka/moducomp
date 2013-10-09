@@ -329,10 +329,9 @@ char_print_loop:
 	move.w @1, #32
 	st.b:3 $D008, @8, @1
 	move.w @12, @3
-	asl.w @12, #2 ; multiply by 5
-	add.w @12, @3
-	add.w @12, #load_table
-	jsr= $F0000, @12
+	asl.w @12, #4
+	sseg.1 @12
+	ld.b:1 @1, @5
 	lsl.w @1, #8
 	move.w @2, #2
 	jsr printHex
@@ -469,45 +468,6 @@ putsF_lp1:
 		st.b:3 $D008, @8, @1
 		jmp putsF_lp1
 putsF_ret:
-	ret
-
-load_table:
-	move.b @1, #$00
-	jmp< load_table_ret
-	move.b @1, #$10
-	jmp< load_table_ret
-	move.b @1, #$20
-	jmp< load_table_ret
-	move.b @1, #$30
-	jmp< load_table_ret
-	move.b @1, #$40
-	jmp< load_table_ret
-	move.b @1, #$50
-	jmp< load_table_ret
-	move.b @1, #$60
-	jmp< load_table_ret
-	move.b @1, #$70
-	jmp< load_table_ret
-	move.b @1, #$80
-	jmp< load_table_ret
-	move.b @1, #$90
-	jmp< load_table_ret
-	move.b @1, #$A0
-	jmp< load_table_ret
-	move.b @1, #$B0
-	jmp< load_table_ret
-	move.b @1, #$C0
-	jmp< load_table_ret
-	move.b @1, #$D0
-	jmp< load_table_ret
-	move.b @1, #$E0
-	jmp< load_table_ret
-	move.b @1, #$F0
-	jmp< load_table_ret
-
-load_table_ret:
-	sseg.1 @1
-	ld.b:1 @1, $0000, @5
 	ret
 
 no_ram_string:

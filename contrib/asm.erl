@@ -607,7 +607,7 @@ parse_op2(Code, [$., VS, $:, VSeg|L1], State) when ?IS_W_B(VS) ->
 
 parse_op3(Code, L1, State) ->
 	% OP3= $baaaa[, @x]
-	% OP3: $aaaa[, @x]
+	% OP3: $aaaa
 	% OP3[<] $aa
 	% OP3[>] $aaaa
 	% OP3 $aa[aa]
