@@ -18,8 +18,10 @@ import net.minecraft.item.ItemStack;
 public class ItemROM extends ItemMemory implements IItemMemory {
 	private ArrayList<IMemory> roms;
 	private ArrayList<String> romNames;
+	
 	public ItemROM(int id, String name) {
 		super(id, name);
+		this.setTextureName("moducomp:rom");
 		roms = new ArrayList<IMemory>();
 		romNames = new ArrayList<String>();
 	}
@@ -31,9 +33,8 @@ public class ItemROM extends ItemMemory implements IItemMemory {
 	@Override
     public void getSubItems(int id, CreativeTabs tab, List items)
     {
-		for(String name: romNames) {
+		for(String name: romNames)
 			items.add(new ItemStack(id, 1, romNames.indexOf(name)));
-		}
     }
 	
 	public int registerROM(String filename, String name) {

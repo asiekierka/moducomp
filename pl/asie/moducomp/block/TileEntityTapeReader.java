@@ -115,4 +115,8 @@ public class TileEntityTapeReader extends TileEntityInventory implements IBundle
 	public int getPreferredDeviceID() {
 		return -1;
 	}
+	
+	
+	@Override
+	public void onPeripheralWriteClient(int addr, int val) { }
 }

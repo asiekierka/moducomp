@@ -143,7 +143,6 @@ public class TileEntityTerminal extends TileEntityInventory implements IEntityPe
     }
     
     public IMemory init(ICPU cpu, IMemoryController memoryController) {
-    	if(this.cpu != null) return null;
     	this.cpu = cpu;
 		clear(true);
         return this.terminal;
@@ -173,5 +172,10 @@ public class TileEntityTerminal extends TileEntityInventory implements IEntityPe
 	@Override
 	public int getPreferredDeviceID() {
 		return -1;
+	}
+	
+	@Override
+	public void onPeripheralWriteClient(int addr, int val) {
+		// TODO
 	}
 }

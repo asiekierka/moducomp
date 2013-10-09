@@ -52,14 +52,14 @@ public class MemoryControllerSlot implements IMemoryController
 			return (byte)0xFF;
 		} else if(addr <= 0xFDFFF) { // Devices
 			IMemory slot = this.deviceSlots[(addr>>8) & 15];
-			synchronized(slot) {
-				return (slot == null ? (byte)0xFF : slot.read8(cpu, addr & 0xFF));
-			}
+			if(slot != null) synchronized(slot) {
+				return slot.read8(cpu, addr & 0xFF);
+			} else return (byte)0xFF;
 		} else { // ROM
 			IMemory slot = this.slots[15];
-			synchronized(slot) {
-				return (slot == null ? (byte)0xFF : slot.read8(cpu, addr & 0x1FFF));
-			}
+			if(slot != null) synchronized(slot) {
+				return slot.read8(cpu, addr & 0x1FFF);
+			} else return (byte)0xFF;
 		}
 	}
 

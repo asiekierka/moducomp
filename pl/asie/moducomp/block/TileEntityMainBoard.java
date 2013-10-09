@@ -3,6 +3,7 @@ package pl.asie.moducomp.block;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import cpw.mods.fml.common.network.PacketDispatcher;
@@ -31,8 +32,11 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
 public class TileEntityMainBoard extends TileEntityInventory {
+	private HashMap<IEntityPeripheral, IMemory> devices;
+	
 	public TileEntityMainBoard() {
 		super(1, 1, "block.moducomp.main_board");
+		devices = new HashMap<IEntityPeripheral, IMemory>();
 	}
 	
 	public IMemoryController getMemoryController() {
@@ -46,18 +50,32 @@ public class TileEntityMainBoard extends TileEntityInventory {
 		return null;
 	}
     
-	public List<IEntityPeripheral> getPeripherals() {
-		ArrayList<IEntityPeripheral> list = new ArrayList<IEntityPeripheral>(5);
+	public void getPeripherals() {
 		for(int[] dir: Helper.DIRECTIONS) {
 			TileEntity te = worldObj.getBlockTileEntity(this.xCoord + dir[0], this.yCoord + dir[1], this.zCoord + dir[2]);
 			if(te instanceof IEntityPeripheral)
-				list.add((IEntityPeripheral)te);
+				devices.put((IEntityPeripheral)te, ((IEntityPeripheral)te).init(this.cpu, this.memory));
 		}
-		return list;
 	}
 	
+	public void updateEntity() {
+		// Every tick.
+		for(IEntityPeripheral peripheral: devices.keySet()) {
+			if(!(peripheral instanceof TileEntity)) return;
+			TileEntity te = (TileEntity)peripheral;
+			if(te.isInvalid()) {
+				peripheral.deinit(cpu); // Just in case
+				IMemory memory = devices.get(peripheral);
+				for(int i = 0; i < 16; i++) {
+					if(this.memory.getDeviceSlot(i) == memory) {
+						this.memory.setDeviceSlot(i, null);
+					}
+				}
+			}
+		}
+	}
 	private void unloadPeripherals() {
-		for(IEntityPeripheral peripheral: getPeripherals()) {
+		for(IEntityPeripheral peripheral: devices.keySet()) {
 			peripheral.deinit(cpu);
 		}
 	}
@@ -90,17 +108,18 @@ public class TileEntityMainBoard extends TileEntityInventory {
 		if(cpu == null) return;
 		// Initialize peripherals
 		this.memory.setDeviceSlot(15, new IOHandlerDebugMC(this));
+		this.getPeripherals();
 		int i = 0;
-		for(IEntityPeripheral peripheral: getPeripherals()) {
+		for(IEntityPeripheral peripheral: devices.keySet()) {
 			ModularComputing.instance.logger.info("Adding peripheral: " + peripheral.toString() + ", slot "+i);
 			if(peripheral.getPreferredDeviceID() >= 0 && peripheral.getPreferredDeviceID() <= 15) {
 				int id = peripheral.getPreferredDeviceID();
 				if(this.memory.getDeviceSlot(id) == null)
-					this.memory.setDeviceSlot(id, peripheral.init(this.cpu, this.memory));
+					this.memory.setDeviceSlot(id, devices.get(peripheral));
 			} else {
 				while(this.memory.getDeviceSlot(i) != null) i++;
 				if(i >= 15) break;
-				this.memory.setDeviceSlot(i, peripheral.init(this.cpu, this.memory));
+				this.memory.setDeviceSlot(i, devices.get(peripheral));
 				i++;
 				if(i >= 15) break; // All slots taken!
 			}

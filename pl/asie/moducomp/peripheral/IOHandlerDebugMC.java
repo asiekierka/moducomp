@@ -29,7 +29,6 @@ public class IOHandlerDebugMC implements IMemory
 	{
 		if(addr == 0xFE) {
 			System.out.write(val);
-			//board.sendAndPrint((short)((int)0xFF & val));
 		}
 	}
 

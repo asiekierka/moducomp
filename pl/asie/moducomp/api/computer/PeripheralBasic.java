@@ -9,6 +9,8 @@ public abstract class PeripheralBasic implements IMemory {
 	public static final int MAP_SIZE = 3;
 	public static final int MAP_NO_READ = 4;
 	public static final int MAP_NO_WRITE = 8;
+	public static final int MAP_SYNC_CLIENT = 16;
+	
 	public PeripheralBasic(short author, byte id, byte deviceClass, byte[] memoryMap) {
 		this.intregs = new byte[256];
 		this.intregs[0] = (byte)(author&0xFF);
