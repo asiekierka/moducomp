@@ -398,7 +398,7 @@ parse_op0(Code, L, State) when Code < 16 ->
 	parse_end(L1),
 	State2;
 parse_op0(Code, [$., X | L], State) when Code >= 16, Code < 32, X >= $0, X =< $3 ->
-	% OP0.1
+	% OP0.2
 	Seg = X - $0,
 	{ok, Reg, L1} = tok_reg(skip_ws(L)),
 	State2 = mem_write(State, [

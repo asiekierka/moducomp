@@ -365,8 +365,8 @@ public class CPUAreia implements ICPU
 		ret |= (rsize == 2 ? 0x80000000 : 0x00000000);
 		ret |= (rmode & 1)<<30;
 		ret |= (rop & 0x7F)<<24;
-		ret |= (ry & 0x0F)<<20;
-		ret |= (rx & 0x0F)<<16;
+		ret |= (ry & 0x0F)<<16;
+		ret |= (rx & 0x0F)<<20;
 		ret |= (rimm & 0xFFFF);
 
 		return ret;
@@ -609,8 +609,8 @@ public class CPUAreia implements ICPU
 				// LD
 				int seg = (op & 3);
 				int offs = ((mode == 0
-					? (0xFF & (int)this.segs[seg])
-					: (seg == 3 ? 0 : (0xFF & (int)this.segs[seg])) + (ry<<16))
+					? ((0xFF & (int)this.segs[seg])<<12) + (0xFFFF & (int)this.regs[ry])
+					: (seg == 3 ? 0 : ((0xFF & (int)this.segs[seg])<<12)) + (ry<<16))
 						+ imm) & 0xFFFFF;
 				//System.out.printf("%05X %d\n", this.pc, size);
 				//System.out.printf("LD %05X\n", offs);
@@ -626,8 +626,8 @@ public class CPUAreia implements ICPU
 				// ST
 				int seg = (op & 3);
 				int offs = ((mode == 0
-					? (0xFF & (int)this.segs[seg])
-					: (seg == 3 ? 0 : (0xFF & (int)this.segs[seg])) + (ry<<16))
+					? ((0xFF & (int)this.segs[seg])<<12) + (0xFFFF & (int)this.regs[ry])
+					: (seg == 3 ? 0 : ((0xFF & (int)this.segs[seg])<<12)) + (ry<<16))
 						+ imm) & 0xFFFFF;
 				//System.out.printf("ST %05X\n", offs);
 				if(size == 2)
@@ -779,7 +779,7 @@ public class CPUAreia implements ICPU
 		int ncyc = this.cycles;
 
 		int op = (uop_data>>24) & 0x3F;
-		int rx = (uop_data>>16) & 0x0F;
+		int rx = (uop_data>>20) & 0x0F;
 
 		SavedUop sop = new SavedUop(uop_data, ncyc - ocyc, this.pc, (short)0xFFFF, opReturns(op, rx), opCanJump(op));
 
@@ -849,7 +849,9 @@ public class CPUAreia implements ICPU
 	
 						this.cycles += sop.load_cycles;
 	
-						//this.debugPC(this.pc);
+						if(this.pc != 0xFE09B && this.pc != 0xFE09E)
+							this.debugPC(this.pc);
+
 						doUop(sop.uop, sop.fmask, sop.use_ret);
 						if(sop.can_jump)
 							break;
