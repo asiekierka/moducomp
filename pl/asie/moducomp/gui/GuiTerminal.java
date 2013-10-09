@@ -21,6 +21,7 @@ import pl.asie.moducomp.item.ItemPaperTape;
 import pl.asie.moducomp.lib.ContainerInventory;
 import pl.asie.moducomp.lib.ContainerNull;
 import pl.asie.moducomp.lib.GuiInventory;
+import pl.asie.moducomp.lib.IGUITileEntity;
 import pl.asie.moducomp.lib.PacketSender;
 import pl.asie.moducomp.lib.TileEntityInventory;
 import net.minecraft.client.gui.GuiButton;
@@ -36,7 +37,7 @@ import cpw.mods.fml.relauncher.SideOnly;
 import cpw.mods.fml.relauncher.Side;
 
 @SideOnly(Side.CLIENT)
-public class GuiTerminal extends GuiContainer implements IGUIText
+public class GuiTerminal extends GuiContainer implements IGUIText, IGUITileEntity
 {
 	private TextRenderer textRenderer = new TextRenderer();
 	private TextWindow window;

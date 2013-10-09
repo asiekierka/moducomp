@@ -3,12 +3,15 @@ package pl.asie.moducomp;
 import java.io.*;
 import java.util.*;
 
+import pl.asie.moducomp.api.IEntityPeripheral;
 import pl.asie.moducomp.api.IGUIText;
 import pl.asie.moducomp.block.TileEntityMainBoard;
 import pl.asie.moducomp.block.TileEntityTapeReader;
 import pl.asie.moducomp.block.TileEntityTerminal;
 import pl.asie.moducomp.gui.GuiTerminal;
 import pl.asie.moducomp.gui.text.TextWindow;
+import pl.asie.moducomp.lib.Helper;
+import pl.asie.moducomp.lib.IGUITileEntity;
 import net.minecraft.src.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
@@ -65,9 +68,35 @@ public class NetworkHandler implements IPacketHandler {
 	
 	public void parseTEPacket(INetworkManager manager, DataInputStream packetData, Player player, int block, TileEntity tileEntity) {
 		try {
+			int commandID = packetData.readUnsignedByte();
+			if(commandID >= 128 && tileEntity instanceof IEntityPeripheral) {
+				IEntityPeripheral peripheral = (IEntityPeripheral)tileEntity;
+	        	if(!(player instanceof EntityPlayerMP)) { // Server -> Client
+	        		GuiScreen display = Minecraft.getMinecraft().currentScreen;
+	        		IGUITileEntity gui = null;
+	        		if(display instanceof IGUITileEntity) {
+	        			gui = (IGUITileEntity)display;
+	        			TileEntity checkedTileEntity = gui.getTileEntity();
+	        			if(!Helper.equalTileEntities(tileEntity, checkedTileEntity)) {
+	        				return; // Invalid GUI
+	        			}
+	        		}
+	        		switch(commandID) {
+	        			case 128: { // byte written
+	        				int addr = packetData.readUnsignedShort();
+	        				int val = packetData.readUnsignedByte();
+	        				peripheral.onPeripheralWriteClient(display, addr, val);
+	        			} break;
+	        			case 129: { // short written
+	        				int addr = packetData.readUnsignedShort();
+	        				int val = packetData.readUnsignedShort();
+	        				peripheral.onPeripheralWriteClient(display, addr, val);
+	        			} break;
+	        		}
+	        	}
+			}
 	        if(tileEntity instanceof TileEntityTapeReader) {
 	        	TileEntityTapeReader tapeReader = (TileEntityTapeReader)tileEntity;
-	        	int commandID = packetData.readUnsignedByte();
 	        	switch(commandID) {
 	        		case 1: { // Set bit
 	                	tapeReader.setBit(packetData.readInt(), packetData.readByte(), packetData.readByte());
@@ -78,7 +107,6 @@ public class NetworkHandler implements IPacketHandler {
 	        	}
 	        } else if(tileEntity instanceof TileEntityMainBoard) {
 	        	TileEntityMainBoard mainBoard = (TileEntityMainBoard)tileEntity;
-	        	int commandID = packetData.readUnsignedByte();
 	        	ModularComputing.instance.logger.info("Received Mainboard command #"+commandID+" on "+(!(player instanceof EntityPlayerMP) ? "client" : "server"));
 	        	if(player instanceof EntityPlayerMP) { // Client -> Server
 	        		switch(commandID) {
@@ -92,7 +120,6 @@ public class NetworkHandler implements IPacketHandler {
 	        	}
 	        } else if(tileEntity instanceof TileEntityTerminal) {
 	        	TileEntityTerminal terminal = (TileEntityTerminal)tileEntity;
-	        	int commandID = packetData.readUnsignedByte();
 	        	ModularComputing.instance.logger.info("Received Terminal command #"+commandID+" on "+(!(player instanceof EntityPlayerMP) ? "client" : "server"));
 	        	if(!(player instanceof EntityPlayerMP)) { // Server -> Client
 	        		GuiScreen display = Minecraft.getMinecraft().currentScreen;

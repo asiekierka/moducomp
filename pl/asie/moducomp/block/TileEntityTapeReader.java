@@ -2,6 +2,8 @@ package pl.asie.moducomp.block;
 
 import java.awt.Container;
 
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 import pl.asie.moducomp.api.IEntityPeripheral;
 import pl.asie.moducomp.api.IItemTape;
 import pl.asie.moducomp.api.computer.ICPU;
@@ -14,6 +16,7 @@ import mods.immibis.redlogic.api.wiring.IBundledEmitter;
 import mods.immibis.redlogic.api.wiring.IBundledWire;
 import mods.immibis.redlogic.api.wiring.IConnectable;
 import mods.immibis.redlogic.api.wiring.IWire;
+import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
@@ -118,5 +121,6 @@ public class TileEntityTapeReader extends TileEntityInventory implements IBundle
 	
 	
 	@Override
-	public void onPeripheralWriteClient(int addr, int val) { }
+	@SideOnly(Side.CLIENT)
+	public void onPeripheralWriteClient(GuiScreen gui, int addr, int val) { }
 }

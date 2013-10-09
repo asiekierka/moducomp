@@ -15,13 +15,14 @@ import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.network.packet.Packet250CustomPayload;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ResourceLocation;
 import cpw.mods.fml.common.network.PacketDispatcher;
 import cpw.mods.fml.relauncher.SideOnly;
 import cpw.mods.fml.relauncher.Side;
 
 @SideOnly(Side.CLIENT)
-public class GuiInventory extends GuiContainer
+public class GuiInventory extends GuiContainer implements IGUITileEntity
 {
     private final ResourceLocation texture;
     protected ContainerInventory inventory;
@@ -34,6 +35,10 @@ public class GuiInventory extends GuiContainer
 		this.xSize = xs;
 		this.ySize = ys;
 		this.texture  = new ResourceLocation("moducomp", "textures/gui/" + textureName + ".png");
+	}
+	
+	public TileEntity getTileEntity() {
+		return tileEntity;
 	}
 
     /**

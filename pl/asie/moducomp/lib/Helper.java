@@ -23,26 +23,6 @@ public class Helper {
         public static final int[][] DIRECTIONS = {
             {-1,0,0}, {0,0,-1}, {1,0,0}, {0,0,1}, {0,-1,0}, {0,1,0}
         };
-
-        public static int[] fileToIntArray(String fn) {
-            InputStream is = ModularComputing.class.getClassLoader().getResourceAsStream(fn);
-            if(is == null) return null;
-            int[] romData = new int[65536]; // No ROMs above 64K!
-            int lastByte = 0;
-            int i = 0;
-            try {
-                while(lastByte>=0) {
-                    lastByte = is.read();
-                    romData[i++] = lastByte;
-                }
-                return Arrays.copyOfRange(romData,0,i-1);
-            } catch(Exception e) { e.printStackTrace(); return null; }
-        }
-        
-        public static NBTTagCompound getTagCompound(ItemStack stack) {
-            if(stack.getTagCompound() == null) return new NBTTagCompound();
-            else return stack.getTagCompound();
-        }
         
 	public static void dropItems(World world, int x, int y, int z) {
 		Random rand = new Random();
@@ -104,5 +84,9 @@ public class Helper {
     {
         int l = MathHelper.floor_double((double)(par5EntityLiving.rotationYaw * 4.0F / 360.0F) + 0.5D) & 3;
         return PLACEMENT_DIRECTIONS[l];
+    }
+    
+    public static boolean equalTileEntities(TileEntity t1, TileEntity t2) {
+    	return (t1.worldObj == t2.worldObj && t1.xCoord == t2.xCoord && t1.yCoord == t2.yCoord && t1.zCoord == t2.zCoord);
     }
 }

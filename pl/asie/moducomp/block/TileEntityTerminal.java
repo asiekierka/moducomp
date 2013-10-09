@@ -5,6 +5,8 @@ import java.io.DataOutputStream;
 
 import cpw.mods.fml.common.network.PacketDispatcher;
 import cpw.mods.fml.common.network.Player;
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 import pl.asie.moducomp.ModularComputing;
 import pl.asie.moducomp.NetworkHandler;
 import pl.asie.moducomp.api.IEntityPeripheral;
@@ -23,6 +25,7 @@ import pl.asie.moducomp.lib.PacketSender;
 import pl.asie.moducomp.lib.TileEntityInventory;
 import pl.asie.moducomp.peripheral.IOHandlerDebugMC;
 import pl.asie.moducomp.peripheral.IOHandlerTerminal;
+import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.item.ItemStack;
@@ -175,7 +178,8 @@ public class TileEntityTerminal extends TileEntityInventory implements IEntityPe
 	}
 	
 	@Override
-	public void onPeripheralWriteClient(int addr, int val) {
+	@SideOnly(Side.CLIENT)
+	public void onPeripheralWriteClient(GuiScreen gui, int addr, int val) {
 		// TODO
 	}
 }
