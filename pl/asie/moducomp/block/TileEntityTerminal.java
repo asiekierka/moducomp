@@ -9,7 +9,7 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import pl.asie.moducomp.ModularComputing;
 import pl.asie.moducomp.NetworkHandler;
-import pl.asie.moducomp.api.IEntityPeripheral;
+import pl.asie.moducomp.api.ITileEntityPeripheral;
 import pl.asie.moducomp.api.IItemCPU;
 import pl.asie.moducomp.api.IItemMemory;
 import pl.asie.moducomp.api.IMemoryControllerProvider;
@@ -33,7 +33,7 @@ import net.minecraft.network.packet.Packet250CustomPayload;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
-public class TileEntityTerminal extends TileEntityInventory implements IEntityPeripheral
+public class TileEntityTerminal extends TileEntityInventory implements ITileEntityPeripheral
 {
 	public TextWindow window;
 	private IOHandlerTerminal terminal;
@@ -175,11 +175,5 @@ public class TileEntityTerminal extends TileEntityInventory implements IEntityPe
 	@Override
 	public int getPreferredDeviceID() {
 		return -1;
-	}
-	
-	@Override
-	@SideOnly(Side.CLIENT)
-	public void onPeripheralWriteClient(GuiScreen gui, int addr, int val) {
-		// TODO
 	}
 }

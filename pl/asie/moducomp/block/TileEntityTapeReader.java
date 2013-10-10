@@ -4,7 +4,7 @@ import java.awt.Container;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import pl.asie.moducomp.api.IEntityPeripheral;
+import pl.asie.moducomp.api.ITileEntityPeripheral;
 import pl.asie.moducomp.api.IItemTape;
 import pl.asie.moducomp.api.computer.ICPU;
 import pl.asie.moducomp.api.computer.IMemory;
@@ -22,7 +22,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
-public class TileEntityTapeReader extends TileEntityInventory implements IBundledEmitter, IConnectable, IEntityPeripheral {
+public class TileEntityTapeReader extends TileEntityInventory implements IBundledEmitter, IConnectable, ITileEntityPeripheral {
 	private IOHandlerTapeReader handler;
 	
 	public TileEntityTapeReader() {
@@ -118,9 +118,4 @@ public class TileEntityTapeReader extends TileEntityInventory implements IBundle
 	public int getPreferredDeviceID() {
 		return -1;
 	}
-	
-	
-	@Override
-	@SideOnly(Side.CLIENT)
-	public void onPeripheralWriteClient(GuiScreen gui, int addr, int val) { }
 }

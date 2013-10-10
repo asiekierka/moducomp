@@ -10,7 +10,7 @@ import cpw.mods.fml.common.network.PacketDispatcher;
 import cpw.mods.fml.common.network.Player;
 import pl.asie.moducomp.ModularComputing;
 import pl.asie.moducomp.NetworkHandler;
-import pl.asie.moducomp.api.IEntityPeripheral;
+import pl.asie.moducomp.api.ITileEntityPeripheral;
 import pl.asie.moducomp.api.IItemCPU;
 import pl.asie.moducomp.api.IItemMemory;
 import pl.asie.moducomp.api.IMemoryControllerProvider;
@@ -32,11 +32,11 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
 public class TileEntityMainBoard extends TileEntityInventory {
-	private HashMap<IEntityPeripheral, IMemory> devices;
+	private HashMap<ITileEntityPeripheral, IMemory> devices;
 	
 	public TileEntityMainBoard() {
 		super(1, 1, "block.moducomp.main_board");
-		devices = new HashMap<IEntityPeripheral, IMemory>();
+		devices = new HashMap<ITileEntityPeripheral, IMemory>();
 	}
 	
 	public IMemoryController getMemoryController() {
@@ -53,14 +53,14 @@ public class TileEntityMainBoard extends TileEntityInventory {
 	public void getPeripherals() {
 		for(int[] dir: Helper.DIRECTIONS) {
 			TileEntity te = worldObj.getBlockTileEntity(this.xCoord + dir[0], this.yCoord + dir[1], this.zCoord + dir[2]);
-			if(te instanceof IEntityPeripheral)
-				devices.put((IEntityPeripheral)te, ((IEntityPeripheral)te).init(this.cpu, this.memory));
+			if(te instanceof ITileEntityPeripheral)
+				devices.put((ITileEntityPeripheral)te, ((ITileEntityPeripheral)te).init(this.cpu, this.memory));
 		}
 	}
 	
 	public void updateEntity() {
 		// Every tick.
-		for(IEntityPeripheral peripheral: devices.keySet()) {
+		for(ITileEntityPeripheral peripheral: devices.keySet()) {
 			if(!(peripheral instanceof TileEntity)) return;
 			TileEntity te = (TileEntity)peripheral;
 			if(te.isInvalid()) {
@@ -75,7 +75,7 @@ public class TileEntityMainBoard extends TileEntityInventory {
 		}
 	}
 	private void unloadPeripherals() {
-		for(IEntityPeripheral peripheral: devices.keySet()) {
+		for(ITileEntityPeripheral peripheral: devices.keySet()) {
 			peripheral.deinit(cpu);
 		}
 	}
@@ -110,7 +110,7 @@ public class TileEntityMainBoard extends TileEntityInventory {
 		this.memory.setDeviceSlot(15, new IOHandlerDebugMC(this));
 		this.getPeripherals();
 		int i = 0;
-		for(IEntityPeripheral peripheral: devices.keySet()) {
+		for(ITileEntityPeripheral peripheral: devices.keySet()) {
 			ModularComputing.instance.logger.info("Adding peripheral: " + peripheral.toString() + ", slot "+i);
 			if(peripheral.getPreferredDeviceID() >= 0 && peripheral.getPreferredDeviceID() <= 15) {
 				int id = peripheral.getPreferredDeviceID();

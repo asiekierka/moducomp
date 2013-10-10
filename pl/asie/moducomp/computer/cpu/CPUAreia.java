@@ -851,8 +851,8 @@ public class CPUAreia implements ICPU
 	
 						this.cycles += sop.load_cycles;
 	
-						if(this.pc != 0xFE09B && this.pc != 0xFE09E)
-							this.debugPC(this.pc);
+						//if(this.pc != 0xFE09B && this.pc != 0xFE09E)
+						//	this.debugPC(this.pc);
 
 						doUop(sop.uop, sop.fmask, sop.use_ret);
 						if(sop.can_jump)
