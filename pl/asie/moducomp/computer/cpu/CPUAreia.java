@@ -615,7 +615,7 @@ public class CPUAreia implements ICPU
 					: (seg == 3 ? 0 : ((0xFF & (int)this.segs[seg])<<12)) + (ry<<16))
 						+ imm) & 0xFFFFF;
 				//System.out.printf("%05X %d\n", this.pc, size);
-				//System.out.printf("LD %05X\n", offs);
+				//System.out.printf("LD %05X @%01X %04X\n", offs, ry, (0xFFFF & (int)this.regs[14]));
 				if(size == 2)
 					return this.read16(offs);
 				else

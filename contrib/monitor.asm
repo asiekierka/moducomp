@@ -1,6 +1,10 @@
 ; Code by asiekierka
 
 	.org $FE000
+	jmp code_start
+
+hexChars: .db "0123456789ABCDEF"
+
 code_start:
 	; Clear interrupts
 	cli
@@ -92,9 +96,9 @@ printHexLoop:
 	move.w @13, @14
 	and.w @13, #$F000
 	lsr.w @13, #12
-	ld.b:3 @12, hexChars, @13
+	ld.b:3 @12, @13, hexChars
 	st.b:3 $D008, @8, @12
-	lsl.w @14, #4
+	asl.w @14, #4
 	sub.b @2, #1
 	jmp printHexLoop
 printHexEnd:
@@ -153,7 +157,6 @@ getHexEnd:
 	sub.w @14, #1
 	ret
 
-hexChars: .db "0123456789ABCDEF"
 prompt_string: .db "$ ", 0
 
 printMemory:
@@ -432,7 +435,7 @@ int_vec:
 	st.w:3 @15, @13
 
 	; Check for interrupt number 0
-	ld.b:= @1, $FFF84
+	ld.b:3 @1, $FF84
 	and.b @1, #$01
 	cmp.b @1, #$01
 	jz int_vec_char

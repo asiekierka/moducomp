@@ -50,8 +50,8 @@ op1("rol") -> 8;
 op1("ror") -> 9;
 op1("rcl") -> 10;
 op1("rcr") -> 11;
-op1("asl") -> 12; op1("lsl") -> 12;
-op1("asr") -> 13;
+op1("asl") -> 13; op1("lsl") -> 13;
+op1("asr") -> 12;
 op1("lsr") -> 14;
 % unused op 15
 op1(_) -> nil.

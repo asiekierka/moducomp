@@ -166,7 +166,6 @@ public class TileEntityTerminal extends TileEntityInventory implements ITileEnti
     }
     
     public void deinit(ICPU cpu) {
-    	if(this.cpu != cpu) return;
     	this.cpu = null;
     	this.terminal = null;
     	clear(true);
