@@ -44,6 +44,7 @@ public class TileEntityMainBoard extends TileEntityInventory {
 			TileEntity te = worldObj.getBlockTileEntity(this.xCoord + dir[0], this.yCoord + dir[1], this.zCoord + dir[2]);
 			if(te instanceof IMemoryControllerProvider) {
 				IMemoryControllerProvider mem = (IMemoryControllerProvider)te;
+				mem.reset();
 				return mem.getMemoryController();
 			}
 		}
@@ -74,6 +75,7 @@ public class TileEntityMainBoard extends TileEntityInventory {
 			}
 		}
 	}
+	
 	private void unloadPeripherals() {
 		for(ITileEntityPeripheral peripheral: devices.keySet()) {
 			peripheral.deinit(cpu);

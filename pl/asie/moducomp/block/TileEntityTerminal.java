@@ -49,10 +49,8 @@ public class TileEntityTerminal extends TileEntityInventory implements ITileEnti
     public void print(short color, short chr, boolean send) {
     	this.window.print(color, chr);
     	if(send) {
-            PacketSender sender = new PacketSender();
-            sender.prefixTileEntity(this);
+            PacketSender sender = new PacketSender(this, 1);
 	        try {
-	        	sender.stream.writeByte(1);
 	            sender.stream.writeShort(color);
 	            sender.stream.writeShort(chr);
 	        } catch(Exception e) { e.printStackTrace(); }
@@ -62,10 +60,8 @@ public class TileEntityTerminal extends TileEntityInventory implements ITileEnti
     
     public void setPalette(int number, short col) {
     	this.window.setPaletteColor(number, col);
-        PacketSender sender = new PacketSender();
-        sender.prefixTileEntity(this);
+        PacketSender sender = new PacketSender(this, 7);
         try {
-            sender.stream.writeByte(7);
             sender.stream.writeByte((byte)number);
             sender.stream.writeShort(col);
         } catch(Exception e) { e.printStackTrace(); }
@@ -73,10 +69,8 @@ public class TileEntityTerminal extends TileEntityInventory implements ITileEnti
     }
     
     public void keyExcludingPlayer(short chr, int excludedID) {
-        PacketSender sender = new PacketSender();
-        sender.prefixTileEntity(this);
+        PacketSender sender = new PacketSender(this, 6);
         try {
-            sender.stream.writeByte(6);
             sender.stream.writeShort(chr);
             sender.stream.writeInt(excludedID);
         } catch(Exception e) { e.printStackTrace(); }
@@ -86,11 +80,7 @@ public class TileEntityTerminal extends TileEntityInventory implements ITileEnti
     public void newline(boolean send) {
     	this.window.newline();
     	if(send) {
-	        PacketSender sender = new PacketSender();
-	        sender.prefixTileEntity(this);
-	        try {
-	            sender.stream.writeByte(4);
-	        } catch(Exception e) { e.printStackTrace(); }
+	        PacketSender sender = new PacketSender(this, 4);
 	        sender.sendAround(this);
     	}
     }
@@ -113,10 +103,8 @@ public class TileEntityTerminal extends TileEntityInventory implements ITileEnti
     
     public void setHardwareEcho(boolean is) {
     	hardwareEcho = is;
-    	PacketSender sender = new PacketSender();
-    	sender.prefixTileEntity(this);
+    	PacketSender sender = new PacketSender(this, 5);
         try {
-        	sender.stream.writeByte(5);
             sender.stream.writeBoolean(is);
         } catch(Exception e) { e.printStackTrace(); }
         sender.sendAround(this);
@@ -124,10 +112,8 @@ public class TileEntityTerminal extends TileEntityInventory implements ITileEnti
     
     public void onPlayerOpen(Player player) {
     	if(this.window == null) clear(false);
-    	PacketSender sender = new PacketSender();
-    	sender.prefixTileEntity(this);
+    	PacketSender sender = new PacketSender(this, 2);
         try {
-            sender.stream.writeByte(2);
             sender.stream.writeShort(this.window.width);
             sender.stream.writeShort(this.window.height);
             sender.stream.writeShort(this.window.x);
@@ -154,10 +140,8 @@ public class TileEntityTerminal extends TileEntityInventory implements ITileEnti
 	private void clear(boolean send) {
 		this.window = new TextWindow(30, 22);
 		if(send) {
-	        PacketSender sender = new PacketSender();
-	        sender.prefixTileEntity(this);
+	        PacketSender sender = new PacketSender(this, 3);
 	        try {
-	        	sender.stream.writeByte(3);
 	            sender.stream.writeShort(this.window.width);
 	            sender.stream.writeShort(this.window.height);
 	        } catch(Exception e) { e.printStackTrace(); }

@@ -18,6 +18,21 @@ public class PacketSender {
         stream = new DataOutputStream(this.bos);
 	}
 	
+	public PacketSender(TileEntity te) {
+		this.bos = new ByteArrayOutputStream();
+        stream = new DataOutputStream(this.bos);
+		prefixTileEntity(te);
+	}
+	
+	public PacketSender(TileEntity te, int command) {
+		this.bos = new ByteArrayOutputStream();
+        stream = new DataOutputStream(this.bos);
+		prefixTileEntity(te);
+		try {
+			stream.writeByte(command);
+		} catch(Exception e) { e.printStackTrace(); }
+	}
+	
 	public Packet250CustomPayload getPacket() {
 		return new Packet250CustomPayload("ModularC", bos.toByteArray());
 	}
