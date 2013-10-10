@@ -59,9 +59,11 @@ public class TileEntityMainBoard extends TileEntityInventory {
 		}
 	}
 	
+	private int ticks = 0;
+	
 	public void updateEntity() {
-		// Every tick.
-		for(ITileEntityPeripheral peripheral: devices.keySet()) {
+		// Every 4 ticks.
+		if((ticks & 3) == 0) for(ITileEntityPeripheral peripheral: devices.keySet()) {
 			if(!(peripheral instanceof TileEntity)) return;
 			TileEntity te = (TileEntity)peripheral;
 			if(te.isInvalid()) {
@@ -74,6 +76,7 @@ public class TileEntityMainBoard extends TileEntityInventory {
 				}
 			}
 		}
+		ticks++;
 	}
 	
 	private void unloadPeripherals() {
@@ -92,6 +95,13 @@ public class TileEntityMainBoard extends TileEntityInventory {
 	public boolean isCPUInserted() {
 		ItemStack cpuStack = this.getStackInSlot(0);
 		return cpuStack != null && (cpuStack.getItem() instanceof IItemCPU);
+	}
+	
+	@Override
+	public void onInventoryChanged(int slot) {
+		if(slot == 0 && !isCPUInserted()) { // Kill CPU thread if it is running
+			this.end();
+		}
 	}
 	
 	private CPUThreadMainBoard currentThread;
