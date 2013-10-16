@@ -21,7 +21,7 @@ public class ItemROM extends ItemMemory implements IItemMemory {
 	
 	public ItemROM(int id, String name) {
 		super(id, name);
-		this.setTextureName("moducomp:rom");
+		this.setTextureName("moducomp:mrom");
 		roms = new ArrayList<IMemory>();
 		romNames = new ArrayList<String>();
 	}
