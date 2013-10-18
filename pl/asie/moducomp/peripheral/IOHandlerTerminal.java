@@ -40,7 +40,6 @@ public class IOHandlerTerminal extends PeripheralBasic implements IMemory
 	}
 	
 	protected boolean flags[];
-	protected boolean keyWait;
 	protected short lastKeys[];
 	protected short lastKeyPos = 0;
 
@@ -60,16 +59,17 @@ public class IOHandlerTerminal extends PeripheralBasic implements IMemory
 	public void onReadShortBegin(ICPU cpu, int addr) {
 		switch(addr) {
 			case 0x0C: // BEGIN KEY READ
-				while(keyWait) try{Thread.sleep(1);} catch(Exception e){}
-				short key = lastKeys[0];
-				intregs[0x0C] = (byte)(key & 0xFF);
-				intregs[0x0D] = (byte)((key >> 8) & 0xFF);
-				if(lastKeyPos > 0) {
-					System.arraycopy(lastKeys, 1, lastKeys, 0, lastKeys.length - 1);
-					lastKeyPos--;
+				synchronized(lastKeys) {
+					short key = lastKeys[0];
+					intregs[0x0C] = (byte)(key & 0xFF);
+					intregs[0x0D] = (byte)((key >> 8) & 0xFF);
+					if(lastKeyPos > 0) {
+						System.arraycopy(lastKeys, 1, lastKeys, 0, lastKeys.length - 1);
+						lastKeyPos--;
+					}
+					lastKeys[lastKeyPos] = 0;
+					break;
 				}
-				lastKeys[lastKeyPos] = 0;
-				break;
 		}
 	}
 	
@@ -115,14 +115,14 @@ public class IOHandlerTerminal extends PeripheralBasic implements IMemory
 	}
 	
 	public boolean addKey(ICPU cpu, short key) {
-		keyWait = true;
 		int interruptLane = (int)0xFF & intregs[0x06];
-		System.arraycopy(lastKeys, 0, lastKeys, 1, lastKeys.length - 1);
-		lastKeys[0] = key;
-		lastKeyPos++;
+		synchronized(lastKeys) {
+			System.arraycopy(lastKeys, 0, lastKeys, 1, lastKeys.length - 1);
+			lastKeys[0] = key;
+			lastKeyPos++;
+		}
 		if(flags[FLAG_INTERRUPT] && interruptLane >= 0 && interruptLane < 28)
 			cpu.interrupt(interruptLane);
-		keyWait = false;
 		return flags[FLAG_HARDWARE_ECHO];
 	}
 }
