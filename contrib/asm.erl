@@ -326,6 +326,12 @@ parse_direc("dw", L, State) ->
 			State2
 	end;
 
+parse_direc("include", L, State) ->
+	{ok, Str, L2} = tok_str(L),
+	S2 = parse_asm_file(Str, State),
+	parse_end(skip_ws(L2)),
+	S2;
+
 parse_direc("db", L, State) ->
 	{WList, L2} = case L of
 		[$" | _] ->
@@ -723,8 +729,15 @@ parse_asm(L, State) ->
 	S2 = parse_asm_line(LParse, State),
 	parse_asm(L2, S2).
 
+parse_asm_string(Str, State) ->
+	parse_asm(Str, State).
+
 parse_asm_string(Str) ->
 	parse_asm(Str, #asm_state{labels=dict:new()}).
+
+parse_asm_file(FName, State) ->
+	L = open_asm(FName),
+	parse_asm_string(L, State).
 
 parse_asm_file(FName) ->
 	L = open_asm(FName),

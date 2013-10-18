@@ -1,0 +1,20 @@
+Note, these documents are kinda crap and unofficial. But they should get you started somewhat.
+
+Terminal (monitor + keyboard):
+	$FDx03.b R - = #$01
+	$FDx04.w - W = ? (echoing-related)
+	$FDx08.b - W = print char
+	$FDx0A.w - W = ?
+	$FDx0C.w R - = get char from keyboard
+	$FDx0E.b - W = ? (new line?)
+	$FDx10.w - W = ? (colour-related)
+	$FDx12.b - W = ?
+
+	Interrupts:
+	int0 = key received
+
+Tape reader:
+	$FDx03.b = #$02
+
+	I really don't know how this works yet. Asie, please write this crap up. Thanks.
+
