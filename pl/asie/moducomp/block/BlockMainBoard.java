@@ -39,8 +39,34 @@ public class BlockMainBoard extends BlockMachineRotatable implements ITileEntity
     @SideOnly(Side.CLIENT)
     public Icon getIcon (int side, int metadata)
     {
-        if(side == metadata || (side == 3 && metadata == 0)) return this.iconMT;
+        if(side == (metadata&7) || (side == 3 && (metadata&7) == 0)) return this.iconMT;
         else return this.iconMG;
+    }
+    
+	// Here comes the musicbox logic.
+	@Override
+    public void onNeighborBlockChange(World world, int x, int y, int z, int par5)
+    {
+    	if(world.isRemote) return;
+    	int metadata = world.getBlockMetadata(x, y, z);
+    	
+        boolean isPowered = world.isBlockIndirectlyGettingPowered(x, y, z) || world.isBlockIndirectlyGettingPowered(x, y + 1, z);
+        boolean wasPowered = world.getBlockMetadata(x, y, z) >= 8;
+
+    	TileEntity te = world.getBlockTileEntity(x, y, z);
+    	if(!(te instanceof TileEntityMainBoard)) return;
+        TileEntityMainBoard board = (TileEntityMainBoard)te;
+        
+        if (isPowered && !wasPowered)
+        {
+            world.setBlockMetadataWithNotify(x, y, z, 8 | (metadata&7), 4);
+            board.begin();
+        }
+        else if (wasPowered && !isPowered)
+        {
+            world.setBlockMetadataWithNotify(x, y, z, (metadata&7), 4);
+            board.end();
+        }
     }
     
 	@Override

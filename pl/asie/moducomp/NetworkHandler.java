@@ -143,19 +143,6 @@ public class NetworkHandler implements IPacketHandler {
 	        			tapeReader.setPosition(packetData.readInt());
 	        		} break;
 	        	}
-	        } else if(tileEntity instanceof TileEntityMainBoard) {
-	        	TileEntityMainBoard mainBoard = (TileEntityMainBoard)tileEntity;
-	        	ModularComputing.instance.logger.info("Received Mainboard command #"+commandID+" on "+(!(player instanceof EntityPlayerMP) ? "client" : "server"));
-	        	if(player instanceof EntityPlayerMP) { // Client -> Server
-	        		switch(commandID) {
-	        			case 1: { // Start/stop CPU
-	        				boolean should = packetData.readBoolean();
-	        				if(should) {
-	        					mainBoard.begin();
-	        				} else mainBoard.end();
-	        			} break;
-	        		}
-	        	}
 	        } else if(tileEntity instanceof TileEntityTerminal) {
 	        	TileEntityTerminal terminal = (TileEntityTerminal)tileEntity;
 	        	if(player instanceof EntityPlayerMP) { // Client -> Server

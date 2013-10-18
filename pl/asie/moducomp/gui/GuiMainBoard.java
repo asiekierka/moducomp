@@ -14,30 +14,9 @@ import pl.asie.moducomp.lib.PacketSender;
 import pl.asie.moducomp.lib.TileEntityInventory;
 
 public class GuiMainBoard extends GuiInventory {
-
 	public GuiMainBoard(InventoryPlayer inventoryPlayer,
 			TileEntityInventory tileEntity, ContainerMainBoard inventory,
 			int xs, int ys, String textureName) {
 		super(inventoryPlayer, tileEntity, inventory, xs, ys, textureName);
 	}
-
-    @Override
-    protected void keyTyped(char keyChar, int keyCode)
-    {
-    	super.keyTyped(keyChar, keyCode);
-        if(keyCode == 200) { // Press UP to play (TODO MAKE THIS REAL)
-        	turnOn();
-        }
-    }
-    
-    private void turnOn() {
-        PacketSender sender = new PacketSender();
-        sender.prefixTileEntity(this.tileEntity);
-        try {
-        	sender.stream.writeByte(1);
-            sender.stream.writeBoolean(true);
-        } catch(Exception e) { e.printStackTrace(); }
-        sender.sendServer();
-    }
-    
 }
