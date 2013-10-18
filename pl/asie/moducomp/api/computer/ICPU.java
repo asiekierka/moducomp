@@ -1,6 +1,8 @@
 package pl.asie.moducomp.api.computer;
 
 public interface ICPU {
+	
+	public int getAddressBitLength();
 	public IMemory getMemoryHandler();
 	public void setMemoryHandler(IMemory handler);
 

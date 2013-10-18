@@ -39,9 +39,20 @@ public class MemoryControllerSlot implements IMemoryController
 		return this.deviceSlots[idx];
 	}
 
+	public int setAddress(ICPU cpu, int addr) {
+		addr &= 0xFFFFF;
+		switch(cpu.getAddressBitLength()) {
+			default:
+				return 0;
+			case 20:
+				return addr;
+			case 16:
+				return (addr & 0xFFFF) | 0xF0000;
+		}
+	}
 	public byte read8(ICPU cpu, int addr)
 	{
-		addr &= 0xFFFFF;
+		addr = setAddress(cpu, addr);
 
 		if(addr < 0xFC000) {
 			IMemory slot = this.memorySlots[(addr >> 16) & 0xF];
@@ -66,7 +77,7 @@ public class MemoryControllerSlot implements IMemoryController
 
 	public void write8(ICPU cpu, int addr, byte val)
 	{
-		addr &= 0xFFFFF;
+		addr = setAddress(cpu, addr);
 		
 		if(addr < 0xFC000) {
 			IMemory slot = this.memorySlots[(addr >> 16) & 0xF];
@@ -92,7 +103,7 @@ public class MemoryControllerSlot implements IMemoryController
 	}
 	
 	public int length() {
-		return 0x100000; // 1MB
+		return -1;
 	}
 }
 

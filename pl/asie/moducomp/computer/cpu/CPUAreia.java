@@ -127,6 +127,8 @@ public class CPUAreia implements ICPU
 		this.halted = false;
 	}
 	
+	public int getAddressBitLength() { return 20; }
+	
 	public IMemory getMemoryHandler() {
 		return this.memctl;
 	}
