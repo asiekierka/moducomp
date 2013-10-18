@@ -111,6 +111,7 @@ public class GuiTerminal extends GuiContainer implements IGUIText, IGUITileEntit
         }
     }
     
+    private static final short[] tint = {32, 32, 32, 0};
     /**
      * Draw the background layer for the GuiContainer (everything behind the items)
      */
@@ -121,6 +122,6 @@ public class GuiTerminal extends GuiContainer implements IGUIText, IGUITileEntit
         int xo = (this.width - this.xSize) / 2;
         int yo = (this.height - this.ySize) / 2;
         this.drawTexturedModalRect(xo, yo, 0, 0, this.xSize, this.ySize);
-        if(window != null) textRenderer.renderWindow(this, this.mc.getTextureManager(), window, xo+8, yo+12, 32767);
+        if(window != null) textRenderer.renderWindow(this, this.mc.getTextureManager(), window, xo+8, yo+12, tint);
     }
 }
