@@ -1,0 +1,28 @@
+{ "vendor": 0xA51E,
+  "deviceClass": 2,
+  "name": "Tape Reader",
+  "memory": {
+    4: {
+      "type": "byte", "perms": "rw",
+      "name": "Flags",
+      "description": "Flag register. Currently unused."},
+    5: {
+      "type": "byte", "perms": "rw",
+      "name": "Interrupt Lane",
+      "description": "The interrupt lane, from 0 to 27. Set to anything higher to disable."},
+    6: {
+      "type": "short", "perms": "rw",
+      "name": "Seek Tape",
+      "description": "(Signed) Seeks a certain amount of bytes on tape."},
+    8: {
+      "type": "byte", "perms": "rw",
+      "name": "Current Byte",
+      "description": ["Read to get byte currently read by the tape reader.",
+        "Write to punch holes in the tape. (OR operation)"]},
+    9: {
+      "type": "byte", "perms": "rw",
+      "name": "Flag - Is Reading?",
+      "description": "1 if busy seeking. Useful for polling and whatnot."},
+  },
+  "extraInfo": "Holes may only be punched, not fixed. This will be doable with a higher-tier device."
+}

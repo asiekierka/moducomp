@@ -1,0 +1,49 @@
+{ "vendor": 0xA51E,
+  "deviceClass": 1,
+  "name": "Terminal",
+  "memory": {
+    4: {
+      "type": "byte", "perms": "rw",
+      "name": "Flags",
+      "description": ["Flag register. Used for configuring the terminal.",
+        "0x01 - Enable/disable hardware echo.",
+        "0x02 - Enable/disable interrupts.",
+        "0x04 - Output register size: byte (0) or short (1)."
+      ]},
+    6: {
+      "type": "byte", "perms": "rw",
+      "name": "Interrupt Lane",
+      "description": "The interrupt lane to use - from 0 to 27."},
+    8: {
+      "type": "short", "perms": "rw",
+      "name": "Write Character",
+      "description": "The character to be written. Check [Flags] for output size."},
+    10: {
+      "type": "byte", "perms": "rw",
+      "name": "Character Foreground",
+      "description": "The foreground color of the character."},
+    11: {
+      "type": "byte", "perms": "rw",
+      "name": "Character Background",
+      "description": "The background color of the character."},
+    12: {
+      "type": "short", "perms": "r",
+      "name": "Key Typed",
+      "description": "Gets the last key typed, from a queue of 24 characters. Slightly buggy w/ hardware echo."},
+    14: {
+      "type": "byte", "perms": "w",
+      "name": "Set Newline",
+      "description": "Sends a new line and scrolls the screen up if necessary."},
+    16: {
+      "type": "short", "perms": "rw",
+      "name": "Palette Editor - Color",
+      "description": "The current color in the palette, in RGB555."},
+    18: {
+      "type": "byte", "perms": "rw",
+      "name": "Palette Editor - ID",
+      "description": "The color being edited, from 0 to 255"}
+  },
+  "extraInfo": ["The terminal supports a 256-color palette.",
+    "Hardware Echo is a way to automatically write printable keys (32-127) to the terminal on clients, minimizing visible lag."
+  ]
+}
