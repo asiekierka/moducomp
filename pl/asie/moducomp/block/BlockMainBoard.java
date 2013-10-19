@@ -49,13 +49,13 @@ public class BlockMainBoard extends BlockMachineRotatable implements ITileEntity
     {
     	if(world.isRemote) return;
     	int metadata = world.getBlockMetadata(x, y, z);
-    	
-        boolean isPowered = world.isBlockIndirectlyGettingPowered(x, y, z) || world.isBlockIndirectlyGettingPowered(x, y + 1, z);
-        boolean wasPowered = world.getBlockMetadata(x, y, z) >= 8;
 
     	TileEntity te = world.getBlockTileEntity(x, y, z);
     	if(!(te instanceof TileEntityMainBoard)) return;
         TileEntityMainBoard board = (TileEntityMainBoard)te;
+        
+        boolean isPowered = board.isBlockPowered();
+        boolean wasPowered = world.getBlockMetadata(x, y, z) >= 8;
         
         if (isPowered && !wasPowered)
         {

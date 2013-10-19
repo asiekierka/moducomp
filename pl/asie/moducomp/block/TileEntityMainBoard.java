@@ -96,16 +96,22 @@ public class TileEntityMainBoard extends TileEntityInventory {
 		ItemStack cpuStack = this.getStackInSlot(0);
 		return cpuStack != null && (cpuStack.getItem() instanceof IItemCPU);
 	}
+	   
+    public boolean isBlockPowered() {
+    	return worldObj.isBlockIndirectlyGettingPowered(xCoord, yCoord, zCoord) || worldObj.isBlockIndirectlyGettingPowered(xCoord, yCoord + 1, zCoord);
+    }
 	
 	@Override
 	public void onInventoryChanged(int slot) {
-		if(slot == 0 && !isCPUInserted()) { // Kill CPU thread if it is running
-			this.end();
+		if(slot == 0) { // Handle CPU
+			if(!isCPUInserted()) this.end(); // If CPU removed, kill
+			else if(isCPUInserted() && isBlockPowered()) this.begin(); // If CPU inserted and powered, begin execution (useful for automation)
 		}
 	}
 	
 	private CPUThreadMainBoard currentThread;
 	
+	public boolean isRunning() { return currentThread != null; }
 	public void begin() {
 		if(!isCPUInserted()) return;
 		// Turn off previous CPU
@@ -145,7 +151,7 @@ public class TileEntityMainBoard extends TileEntityInventory {
 	}
 	
 	public void end() {
-		if(currentThread != null) {
+		if(isRunning()) {
 			currentThread.kill();
 			currentThread = null;
 			unload();
