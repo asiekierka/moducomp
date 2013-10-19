@@ -44,6 +44,6 @@
       "description": "The color being edited, from 0 to 255"}
   },
   "extraInfo": ["The terminal supports a 256-color palette.",
-    "Hardware Echo is a way to automatically write printable keys (32-127) to the terminal on clients, minimizing visible lag."
+    "Hardware Echo is a way to automatically write printable keys (32-126) to the terminal on clients, minimizing visible lag."
   ]
 }
