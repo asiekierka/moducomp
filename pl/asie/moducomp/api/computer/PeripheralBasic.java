@@ -1,7 +1,5 @@
 package pl.asie.moducomp.api.computer;
 
-import pl.asie.moducomp.ModularComputing;
-
 public abstract class PeripheralBasic implements IMemory {
 	public static final int MAP_NONE = 0;
 	public static final int MAP_BYTE = 1;

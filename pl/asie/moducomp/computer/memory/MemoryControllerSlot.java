@@ -1,6 +1,5 @@
 package pl.asie.moducomp.computer.memory;
 
-import pl.asie.moducomp.ModularComputing;
 import pl.asie.moducomp.api.computer.ICPU;
 import pl.asie.moducomp.api.computer.IMemory;
 import pl.asie.moducomp.api.computer.IMemoryController;
