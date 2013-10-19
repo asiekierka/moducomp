@@ -532,6 +532,52 @@ public class CPUAreia implements ICPU
 				if((fmask & F_CARRY) != 0) this.setFlag(F_CARRY, (retpre & 0x0001) != 0);
 				return (short)ret;
 			} //break;
+			case UOP_ROL: {
+				int vx = 0xFFFF & (int)this.regs[(mode == 0 ? rx : ry)];
+				int vy = (mode != 0 ? imm : 0xFFFF & (int)this.regs[ry]);
+				int ret = (size == 2 ? (vx << (vy&15) | vx >>> (16-(vy&15))) & 0xFFFF
+						: (vx << (vy&7) | vx >>> (8-(vy&7))) & 0xFF);
+				if((fmask & F_OVERFLOW) != 0) this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
+				if((fmask & F_SIGNED) != 0) this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
+				if((fmask & F_ZERO) != 0) this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
+				return (short)ret;
+			} //break;
+			case UOP_ROR: {
+				int vx = 0xFFFF & (int)this.regs[(mode == 0 ? rx : ry)];
+				int vy = (mode != 0 ? imm : 0xFFFF & (int)this.regs[ry]);
+				int ret = (size == 2 ? (vx >>> (vy&15) | vx << (16-(vy&15))) & 0xFFFF
+						: (vx >>> (vy&7) | vx << (8-(vy&7))) & 0xFF);
+				if((fmask & F_OVERFLOW) != 0) this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
+				if((fmask & F_SIGNED) != 0) this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
+				if((fmask & F_ZERO) != 0) this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
+				return (short)ret;
+			} //break;
+			case UOP_RCL: {
+				int vx = 0xFFFF & (int)this.regs[(mode == 0 ? rx : ry)];
+				int vy = (mode != 0 ? imm : 0xFFFF & (int)this.regs[ry]) % (size == 2 ? 17 : 9);
+				int ret = (size == 2 ? vx | (((this.flags & F_CARRY) > 0) ? 0x10000 : 0)
+						: vx | (((this.flags & F_CARRY) > 0) ? 0x100 : 0));
+				ret = (size == 2 ? (ret << vy | ret >>> (17-vy))
+						: (ret << vy | ret >>> (9-vy)));
+				if((fmask & F_OVERFLOW) != 0) this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
+				if((fmask & F_SIGNED) != 0) this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
+				if((fmask & F_ZERO) != 0) this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
+				if((fmask & F_CARRY) != 0) this.setFlag(F_CARRY, (ret & (size == 2 ? 0x10000 : 0x100)) != 0);
+				return (short)ret;
+			} //break;
+			case UOP_RCR: {
+				int vx = 0xFFFF & (int)this.regs[(mode == 0 ? rx : ry)];
+				int vy = (mode != 0 ? imm : 0xFFFF & (int)this.regs[ry]) % (size == 2 ? 17 : 9);
+				int ret = (size == 2 ? vx | (((this.flags & F_CARRY) > 0) ? 0x10000 : 0)
+						: vx | (((this.flags & F_CARRY) > 0) ? 0x100 : 0));
+				ret = (size == 2 ? (ret >>> vy | ret << (17-vy))
+						: (ret >>> vy | ret << (9-vy)));
+				if((fmask & F_OVERFLOW) != 0) this.setParityFlag((short)(ret & (size == 2 ? 0xFFFF : 0xFF)));
+				if((fmask & F_SIGNED) != 0) this.setFlag(F_SIGNED, (ret & (size == 2 ? 0x8000 : 0x0080)) != 0);
+				if((fmask & F_ZERO) != 0) this.setFlag(F_ZERO, (ret & (size == 2 ? 0xFFFF : 0x00FF)) == 0);
+				if((fmask & F_CARRY) != 0) this.setFlag(F_CARRY, (ret & (size == 2 ? 0x10000 : 0x100)) != 0);
+				return (short)ret;
+			} //break;
 			case UOP_JZ:
 				if((this.flags & F_ZERO) != 0)
 					this.pc = imm;

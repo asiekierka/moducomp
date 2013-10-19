@@ -15,8 +15,10 @@ public class ContainerInventory extends Container {
 		iSize = size;
 		this.tileEntity = entity;
 	}
+	
 	@Override
 	public boolean canInteractWith(EntityPlayer player) { return true; }
+	
 	@Override
 	public ItemStack transferStackInSlot(EntityPlayer player, int slot) {
 		ItemStack stack = null;
